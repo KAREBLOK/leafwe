@@ -23,7 +23,7 @@ public final class LeafWE extends JavaPlugin {
         registerCommands();
         registerListeners();
 
-        getLogger().info("LeafWE v2.0.3 başarıyla etkinleştirildi!");
+        getLogger().info("LeafWE v2.4 başarıyla etkinleştirildi!");
     }
 
     private void registerCommands() {
@@ -31,7 +31,7 @@ public final class LeafWE extends JavaPlugin {
         this.getCommand("wall").setExecutor(new WallCommand(this, selectionManager, configManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager));
         this.getCommand("replace").setExecutor(new ReplaceCommand(this, selectionManager, configManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager));
 
-        this.getCommand("lwe").setExecutor(new LWECommand(configManager, undoManager, pendingCommandManager));
+        this.getCommand("lwe").setExecutor(new LWECommand(this, configManager, undoManager, pendingCommandManager));
     }
 
     private void registerListeners() {
