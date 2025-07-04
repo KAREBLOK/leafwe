@@ -51,7 +51,6 @@ public class ReplaceTask extends BukkitRunnable {
             return;
         }
 
-        // İYİLEŞTİRME: get(0) yerine getFirst() kullanıldı.
         Block currentBlock = blocksToChange.getFirst();
 
         if (worker == null && configManager.isWorkerAnimationEnabled()) {
@@ -64,7 +63,6 @@ public class ReplaceTask extends BukkitRunnable {
             worker.swingMainHand();
         }
 
-        // İYİLEŞTİRME: remove(0) yerine removeFirst() kullanıldı.
         blocksToChange.removeFirst();
         currentBlock.setType(toMaterial);
 
@@ -90,7 +88,6 @@ public class ReplaceTask extends BukkitRunnable {
 
         if (configManager.shouldShowWorkerName()) {
             String name = configManager.getWorkerNameTemplate().replace("%player%", player.getName());
-            // DÜZELTME: Eski setCustomName yerine modern Component kullanımı
             worker.customName(LegacyComponentSerializer.legacyAmpersand().deserialize(name));
             worker.setCustomNameVisible(true);
         }

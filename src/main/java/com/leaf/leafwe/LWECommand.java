@@ -15,7 +15,6 @@ public class LWECommand implements CommandExecutor {
     private final UndoManager undoManager;
     private final PendingCommandManager pendingCommandManager;
 
-    // Constructor, artık kullanılmayan "plugin" parametresini içermiyor.
     public LWECommand(ConfigManager configManager, UndoManager undoManager, PendingCommandManager pendingCommandManager) {
         this.configManager = configManager;
         this.undoManager = undoManager;

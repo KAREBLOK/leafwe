@@ -31,7 +31,6 @@ public final class LeafWE extends JavaPlugin {
         this.getCommand("wall").setExecutor(new WallCommand(this, selectionManager, configManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager));
         this.getCommand("replace").setExecutor(new ReplaceCommand(this, selectionManager, configManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager));
 
-        // DÜZELTİLDİ: Baştaki 'this,' parametresi kaldırıldı.
         this.getCommand("lwe").setExecutor(new LWECommand(configManager, undoManager, pendingCommandManager));
     }
 
