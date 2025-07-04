@@ -35,9 +35,9 @@ public class LWECommand implements CommandExecutor {
                 break;
             case "give":
                 if (!sender.hasPermission("leafwe.give")) { sender.sendMessage(configManager.getMessage("no-permission")); return true; }
-                if (args.length != 2) { sender.sendMessage("§cUsage: /lwe give <player_name>"); return true; }
+                if (args.length != 2) { sender.sendMessage(configManager.getMessage("invalid-usage-give")); return true; }
                 Player target = Bukkit.getPlayerExact(args[1]);
-                if (target == null) { sender.sendMessage("§cPlayer not found: " + args[1]); return true; }
+                if (target == null) { sender.sendMessage(configManager.getMessage("player-not-found").replaceText(config -> config.matchLiteral("%player%").replacement(args[1]))); return true; }
                 ItemStack wand = new ItemStack(configManager.getWandMaterial(), 1);
                 ItemMeta meta = wand.getItemMeta();
                 if (meta != null) {
@@ -47,25 +47,19 @@ public class LWECommand implements CommandExecutor {
                 }
                 target.getInventory().addItem(wand);
                 target.sendMessage(configManager.getMessage("wand-given-receiver"));
-                if (!sender.equals(target)) {
-                    Component message = configManager.getMessage("wand-given-sender")
-                            .replaceText(config -> config.matchLiteral("%player%").replacement(target.getName()));
-                    sender.sendMessage(message);
-                }
+                if (!sender.equals(target)) sender.sendMessage(configManager.getMessage("wand-given-sender").replaceText(config -> config.matchLiteral("%player%").replacement(target.getName())));
                 break;
             case "undo":
-                if (!(sender instanceof Player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
-                Player undoPlayer = (Player) sender;
-                if (!undoPlayer.hasPermission("leafwe.undo")) { undoPlayer.sendMessage(configManager.getMessage("no-permission")); return true; }
-                if (undoManager.undoLastChange(undoPlayer)) { undoPlayer.sendMessage(configManager.getMessage("undo-successful")); }
-                else { undoPlayer.sendMessage(configManager.getMessage("no-undo")); }
+                if (!(sender instanceof Player player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
+                if (!player.hasPermission("leafwe.undo")) { player.sendMessage(configManager.getMessage("no-permission")); return true; }
+                if (undoManager.undoLastChange(player)) { player.sendMessage(configManager.getMessage("undo-successful")); }
+                else { player.sendMessage(configManager.getMessage("no-undo")); }
                 break;
             case "confirm":
-                if (!(sender instanceof Player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
-                Player confirmPlayer = (Player) sender;
-                if (!confirmPlayer.hasPermission("leafwe.confirm")) { confirmPlayer.sendMessage(configManager.getMessage("no-permission")); return true; }
-                if (pendingCommandManager.confirm(confirmPlayer)) { confirmPlayer.sendMessage(configManager.getMessage("confirmation-successful")); }
-                else { confirmPlayer.sendMessage(configManager.getMessage("no-pending-confirmation")); }
+                if (!(sender instanceof Player player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
+                if (!player.hasPermission("leafwe.confirm")) { player.sendMessage(configManager.getMessage("no-permission")); return true; }
+                if (pendingCommandManager.confirm(player)) { player.sendMessage(configManager.getMessage("confirmation-successful")); }
+                else { player.sendMessage(configManager.getMessage("no-pending-confirmation")); }
                 break;
             default:
                 sender.sendMessage(configManager.getMessage("help-message"));
