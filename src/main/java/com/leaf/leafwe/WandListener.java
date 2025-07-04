@@ -7,6 +7,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import java.util.Objects;
 
 public class WandListener implements Listener {
     private final SelectionManager selectionManager;
@@ -42,8 +43,7 @@ public class WandListener implements Listener {
         ItemMeta meta = item.getItemMeta();
         if (meta == null || !meta.hasDisplayName() || !meta.hasLore()) return false;
 
-        // DÜZENLENDİ: Modern Component karşılaştırması
-        return meta.displayName().equals(configManager.getWandName()) &&
-                meta.lore() != null && meta.lore().equals(configManager.getWandLore());
+        return Objects.equals(meta.displayName(), configManager.getWandName()) &&
+                Objects.equals(meta.lore(), configManager.getWandLore());
     }
 }
