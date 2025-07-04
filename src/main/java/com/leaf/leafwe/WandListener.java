@@ -7,7 +7,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import java.util.Objects;
+import java.util.Objects; // Güvenli karşılaştırma için gerekli
 
 public class WandListener implements Listener {
     private final SelectionManager selectionManager;
@@ -25,7 +25,9 @@ public class WandListener implements Listener {
         if (isWand(event.getItem())) {
             if (event.getClickedBlock() != null) {
                 event.setCancelled(true);
+
                 Location loc = event.getClickedBlock().getLocation();
+
                 if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
                     selectionManager.setPosition1(event.getPlayer(), loc);
                     event.getPlayer().sendMessage(configManager.getMessage("pos1-set"));
@@ -33,15 +35,22 @@ public class WandListener implements Listener {
                     selectionManager.setPosition2(event.getPlayer(), loc);
                     event.getPlayer().sendMessage(configManager.getMessage("pos2-set"));
                 }
+
                 selectionVisualizer.start(event.getPlayer());
             }
         }
     }
 
     private boolean isWand(ItemStack item) {
-        if (item == null || item.getType() != configManager.getWandMaterial()) return false;
+        if (item == null || item.getType() != configManager.getWandMaterial()) {
+            return false;
+        }
+
         ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasDisplayName() || !meta.hasLore()) return false;
+
+        if (meta == null || !meta.hasDisplayName() || !meta.hasLore()) {
+            return false;
+        }
 
         return Objects.equals(meta.displayName(), configManager.getWandName()) &&
                 Objects.equals(meta.lore(), configManager.getWandLore());
