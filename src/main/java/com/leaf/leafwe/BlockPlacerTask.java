@@ -51,7 +51,6 @@ public class BlockPlacerTask extends BukkitRunnable {
             return;
         }
 
-        // İYİLEŞTİRME: get(0) yerine getFirst() kullanıldı.
         Location currentLocation = locationsToFill.getFirst();
 
         if (worker == null && configManager.isWorkerAnimationEnabled()) {
@@ -64,7 +63,6 @@ public class BlockPlacerTask extends BukkitRunnable {
             worker.swingMainHand();
         }
 
-        // İYİLEŞTİRME: remove(0) yerine removeFirst() kullanıldı.
         locationsToFill.removeFirst();
         if (currentLocation.getBlock().getType() != material) {
             currentLocation.getBlock().setType(material);
@@ -91,7 +89,6 @@ public class BlockPlacerTask extends BukkitRunnable {
 
         if (configManager.shouldShowWorkerName()) {
             String name = configManager.getWorkerNameTemplate().replace("%player%", player.getName());
-            // DÜZELTME: Eski setCustomName yerine modern Component kullanımı
             worker.customName(LegacyComponentSerializer.legacyAmpersand().deserialize(name));
             worker.setCustomNameVisible(true);
         }
