@@ -30,12 +30,14 @@ public final class LeafWE extends JavaPlugin {
         this.getCommand("set").setExecutor(new SetCommand(this, selectionManager, configManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager));
         this.getCommand("wall").setExecutor(new WallCommand(this, selectionManager, configManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager));
         this.getCommand("replace").setExecutor(new ReplaceCommand(this, selectionManager, configManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager));
-        this.getCommand("lwe").setExecutor(new LWECommand(this, configManager, undoManager, pendingCommandManager));
+
+        // DÜZELTİLDİ: Baştaki 'this,' parametresi kaldırıldı.
+        this.getCommand("lwe").setExecutor(new LWECommand(configManager, undoManager, pendingCommandManager));
     }
 
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new WandListener(selectionManager, configManager, selectionVisualizer), this);
-        getServer().getPluginManager().registerEvents(new PlayerListener(selectionManager, undoManager, pendingCommandManager, selectionVisualizer), this);
+        getServer().getPluginManager().registerEvents(new PlayerListener(selectionManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager), this);
     }
 
     @Override
