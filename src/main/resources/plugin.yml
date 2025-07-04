@@ -1,0 +1,44 @@
+name: LeafWE
+version: 2.0.3
+main: com.leaf.leafwe.LeafWE
+api-version: 1.21
+author: BaranMRJ
+description: An advanced construction manager plugin.
+commands:
+  set:
+    description: Fills the selected area with a specified block.
+    usage: /set <block_name>
+  wall:
+    description: Builds the walls of the selected area.
+    usage: /wall <block_name>
+  replace:
+    description: Replaces blocks within the selected area.
+    usage: /replace <from_block> <to_block>
+  lwe:
+    description: Main LeafWE command.
+    aliases: [leafwe]
+permissions:
+  leafwe.use:
+    description: Grants permission to use the /set command.
+    default: true
+  leafwe.wall:
+    description: Grants permission to use the /wall command.
+    default: true
+  leafwe.replace:
+    description: Grants permission to use the /replace command.
+    default: op
+  leafwe.reload:
+    description: Grants permission to use the /lwe reload command.
+    default: op
+  leafwe.give:
+    description: Grants permission to use the /lwe give command.
+    default: op
+  leafwe.undo:
+    description: Grants permission to use the /lwe undo command.
+    default: true
+  leafwe.confirm:
+    description: Grants permission to confirm pending operations.
+    default: true
+  leafwe.bypass.limit:
+    description: Grants permission to bypass the maximum volume limit.
+    default: op

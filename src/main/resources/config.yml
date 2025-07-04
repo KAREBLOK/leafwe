@@ -1,0 +1,52 @@
+# LeafWE Plugin Settings v2.0.3
+
+# General settings for plugin behavior.
+settings:
+  # Language file to use (e.g., 'en' for messages_en.yml, 'tr' for messages_tr.yml).
+  language: 'en'
+  # Delay in ticks between each block placement (Lower = Faster, Higher = Slower). 20 ticks = 1 second.
+  speed: 2
+  # Particle effect to show when a block is placed. Set to 'NONE' to disable.
+  placement-particle: 'WAX_ON'
+  # Enable selection visualization with particles (true/false).
+  selection-visualizer: true
+  # Require confirmation for operations affecting more blocks than this value. Set to 0 to disable.
+  confirmation-limit: 5000
+  # The maximum number of undo actions a player can have stored.
+  max-undo: 10
+  # The maximum volume of blocks a non-admin player can affect at once.
+  max-volume: 50000
+  # Settings for the success effect after an operation is complete.
+  success-effect:
+    enabled: true
+    sound: 'ENTITY_PLAYER_LEVELUP'
+  #  Worker Heating Settings
+  worker-animation:
+    enabled: true
+    show-name: true
+    name-template: '&a[Worker] %player%'
+    #  Determines how high the worker will stand above the block he will place. (1.5 is ideal)
+    y-offset: 1.5
+    # Sample colors: 0.255.255 (Aqua) | 255.0.0 (Red) | 138.43.226 (Blue-Purple)
+    armor-color: '0,255,255'
+
+# Properties of the selection wand.
+wand-tool:
+  material: 'BLAZE_ROD'
+  name: '&6Construction Rod'
+  lore:
+    - '&eUse this to select regions.'
+    - '&7Left-Click: Set Position 1'
+    - '&7Right-Click: Set Position 2'
+
+# A list of materials that cannot be used with construction commands.
+blocked-materials:
+  - 'BEDROCK'
+  - 'COMMAND_BLOCK'
+  - 'CHAIN_COMMAND_BLOCK'
+  - 'REPEATING_COMMAND_BLOCK'
+  - 'BARRIER'
+  - 'STRUCTURE_VOID'
+  - 'SPAWNER'
+  - 'TNT'
+  - 'AIR'
