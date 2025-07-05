@@ -51,7 +51,7 @@ public class BlockPlacerTask extends BukkitRunnable {
             return;
         }
 
-        Location currentLocation = locationsToFill.getFirst();
+        Location currentLocation = locationsToFill.get(0);
 
         if (worker == null && configManager.isWorkerAnimationEnabled()) {
             spawnWorker(currentLocation);
@@ -63,7 +63,7 @@ public class BlockPlacerTask extends BukkitRunnable {
             worker.swingMainHand();
         }
 
-        locationsToFill.removeFirst();
+        locationsToFill.remove(0);
         if (currentLocation.getBlock().getType() != material) {
             currentLocation.getBlock().setType(material);
             if (configManager.getPlacementParticle() != null) {
@@ -84,7 +84,6 @@ public class BlockPlacerTask extends BukkitRunnable {
         worker.setArms(true);
         worker.setBasePlate(false);
         worker.setSmall(true);
-
         worker.setHeadPose(new EulerAngle(Math.toRadians(25), 0, 0));
 
         if (configManager.shouldShowWorkerName()) {
@@ -104,7 +103,6 @@ public class BlockPlacerTask extends BukkitRunnable {
         worker.getEquipment().setItemInMainHand(new ItemStack(this.material, 1));
 
         Color armorColor = configManager.getWorkerArmorColor();
-
         ItemStack chestplate = new ItemStack(Material.LEATHER_CHESTPLATE, 1);
         LeatherArmorMeta chestMeta = (LeatherArmorMeta) chestplate.getItemMeta();
         chestMeta.setColor(armorColor);

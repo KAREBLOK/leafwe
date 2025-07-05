@@ -22,6 +22,7 @@ public class UndoManager {
         history.computeIfAbsent(player.getUniqueId(), k -> new LinkedList<>());
         LinkedList<Map<Location, BlockData>> playerHistory = history.get(player.getUniqueId());
         playerHistory.push(change);
+
         while (playerHistory.size() > configManager.getMaxUndo()) {
             playerHistory.removeLast();
         }
@@ -33,7 +34,8 @@ public class UndoManager {
             return false;
         }
         Map<Location, BlockData> lastChange = playerHistory.pop();
-        new UndoTask(lastChange).runTaskTimer(plugin, 1L, 1L);
+
+        new UndoTask(player, lastChange, configManager).runTaskTimer(plugin, 1L, 1L);
         return true;
     }
 

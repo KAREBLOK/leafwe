@@ -51,7 +51,7 @@ public class ReplaceTask extends BukkitRunnable {
             return;
         }
 
-        Block currentBlock = blocksToChange.getFirst();
+        Block currentBlock = blocksToChange.get(0);
 
         if (worker == null && configManager.isWorkerAnimationEnabled()) {
             spawnWorker(currentBlock.getLocation());
@@ -63,7 +63,7 @@ public class ReplaceTask extends BukkitRunnable {
             worker.swingMainHand();
         }
 
-        blocksToChange.removeFirst();
+        blocksToChange.remove(0);
         currentBlock.setType(toMaterial);
 
         if (configManager.getPlacementParticle() != null) {

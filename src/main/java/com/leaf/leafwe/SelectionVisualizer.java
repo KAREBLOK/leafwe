@@ -3,7 +3,6 @@ package com.leaf.leafwe;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
-import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
@@ -81,6 +80,7 @@ public class SelectionVisualizer {
 
     private void drawBox(Location corner1, Location corner2, Color color) {
         Particle.DustOptions dustOptions = new Particle.DustOptions(color, 1.0F);
+
         double minX = Math.min(corner1.getX(), corner2.getX());
         double minY = Math.min(corner1.getY(), corner2.getY());
         double minZ = Math.min(corner1.getZ(), corner2.getZ());
@@ -89,22 +89,28 @@ public class SelectionVisualizer {
         double maxZ = Math.max(corner1.getZ(), corner2.getZ()) + 1;
 
         for (double x = minX; x <= maxX; x += 0.5) {
-            corner1.getWorld().spawnParticle(Particle.DUST, x, minY, minZ, 0, dustOptions);
-            corner1.getWorld().spawnParticle(Particle.DUST, x, maxY, minZ, 0, dustOptions);
-            corner1.getWorld().spawnParticle(Particle.DUST, x, minY, maxZ, 0, dustOptions);
-            corner1.getWorld().spawnParticle(Particle.DUST, x, maxY, maxZ, 0, dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), x, minY, minZ), dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), x, maxY, minZ), dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), x, minY, maxZ), dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), x, maxY, maxZ), dustOptions);
         }
         for (double y = minY; y <= maxY; y += 0.5) {
-            corner1.getWorld().spawnParticle(Particle.DUST, minX, y, minZ, 0, dustOptions);
-            corner1.getWorld().spawnParticle(Particle.DUST, maxX, y, minZ, 0, dustOptions);
-            corner1.getWorld().spawnParticle(Particle.DUST, minX, y, maxZ, 0, dustOptions);
-            corner1.getWorld().spawnParticle(Particle.DUST, maxX, y, maxZ, 0, dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), minX, y, minZ), dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), maxX, y, minZ), dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), minX, y, maxZ), dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), maxX, y, maxZ), dustOptions);
         }
         for (double z = minZ; z <= maxZ; z += 0.5) {
-            corner1.getWorld().spawnParticle(Particle.DUST, minX, minY, z, 0, dustOptions);
-            corner1.getWorld().spawnParticle(Particle.DUST, maxX, minY, z, 0, dustOptions);
-            corner1.getWorld().spawnParticle(Particle.DUST, minX, maxY, z, 0, dustOptions);
-            corner1.getWorld().spawnParticle(Particle.DUST, maxX, maxY, z, 0, dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), minX, minY, z), dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), maxX, minY, z), dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), minX, maxY, z), dustOptions);
+            spawnParticle(new Location(corner1.getWorld(), maxX, maxY, z), dustOptions);
+        }
+    }
+
+    private void spawnParticle(Location location, Particle.DustOptions options) {
+        if (location.getWorld() != null) {
+            location.getWorld().spawnParticle(Particle.REDSTONE, location, 1, options);
         }
     }
 }

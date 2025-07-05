@@ -1,7 +1,7 @@
 name: LeafWE
-version: 2.0.4
+version: ${project.version}
 main: com.leaf.leafwe.LeafWE
-api-version: 1.21
+api-version: 1.19
 author: BaranMRJ
 description: An advanced construction manager plugin.
 commands:

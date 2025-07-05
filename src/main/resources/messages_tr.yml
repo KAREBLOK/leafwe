@@ -48,4 +48,5 @@ messages:
   wand-given-receiver: '&aSize bir İnşaat Çubuğu verildi!'
   wand-given-sender: '&a%player% adlı oyuncuya İnşaat Çubuğu verildi.'
   undo-basarili: '&aSon işleminiz geri alındı.'
+  undo-basarili-iade-ile: '&aİşlem geri alındı! &e%count% &ablok envanterinize iade edildi.'
   undo-yok: '&cGeri alınacak bir işleminiz bulunmuyor.'

@@ -23,7 +23,7 @@ public final class LeafWE extends JavaPlugin {
         registerCommands();
         registerListeners();
 
-        getLogger().info("LeafWE v2.4 başarıyla etkinleştirildi!");
+        getLogger().info("LeafWE v3.0.0 başarıyla etkinleştirildi!");
     }
 
     private void registerCommands() {

@@ -48,4 +48,5 @@ messages:
   wand-given-receiver: '&aYou have been given a Construction Rod!'
   wand-given-sender: '&aA Construction Rod has been given to %player%.'
   undo-successful: '&aYour last operation has been undone.'
+  undo-successful-with-refund: '&aOperation undone! &e%count% &ablocks have been returned to your inventory.'
   no-undo: '&cThere are no operations to undo.'
