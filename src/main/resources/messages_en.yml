@@ -18,11 +18,13 @@ messages:
   replace-first-block-specify: '&eNow, specify the name of the block you want to replace. &7Example: /replace dirt'
   replace-second-block-specify: '&aGreat! &eNow specify what block to replace ''%old_block%'' with. &7Example: /replace %old_block% stone'
 
-  # Selection Messages
+  # Selection & Pipette Messages
   select-pos1: '&cYou must select position 1 first! (Left-click with the construction rod)'
   select-pos2: '&cPosition 1 is set. Now select position 2! (Right-click with the construction rod)'
   pos1-set: '&aPosition 1 has been set!'
   pos2-set: '&aPosition 2 has been set!'
+  blockstate-copied: '&aCopied block state of: &e%block%'
+  blockstate-cleared: '&7Copied block state has been cleared.'
 
   # Block & Inventory Checks
   invalid-block: '&cInvalid block name: %block%'
@@ -44,9 +46,14 @@ messages:
   world-disabled: '&cLeafWE commands cannot be used in this world.'
   task-already-running: '&cYou already have an active operation. Please wait for it to finish.'
 
+  # GUI Messages
+  gui-opened: '&ePlease select a block from the menu.'
+  replace-gui-opened: '&ePlease place the blocks to be replaced in the designated slots.'
+  replace-gui-missing-blocks: '&cPlease place both the old and new blocks in the slots.'
+
   # Wand & Undo
   wand-given-receiver: '&aYou have been given a Construction Rod!'
   wand-given-sender: '&aA Construction Rod has been given to %player%.'
-  undo-successful: '&aYour last operation has been undone.'
+  undo-successful: '&aYour last operation has been undone. (No items were refunded)'
   undo-successful-with-refund: '&aOperation undone! &e%count% &ablocks have been returned to your inventory.'
   no-undo: '&cThere are no operations to undo.'

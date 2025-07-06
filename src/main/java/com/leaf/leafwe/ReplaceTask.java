@@ -5,6 +5,7 @@ import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -22,16 +23,18 @@ public class ReplaceTask extends BukkitRunnable {
     private final ConfigManager configManager;
     private final SelectionVisualizer selectionVisualizer;
     private final TaskManager taskManager;
+    private final BlockstateManager blockstateManager;
     private int blocksReplaced = 0;
     private ArmorStand worker = null;
 
-    public ReplaceTask(Player player, List<Block> blocksToChange, Material toMaterial, ConfigManager configManager, SelectionVisualizer visualizer, TaskManager taskManager) {
+    public ReplaceTask(Player player, List<Block> blocksToChange, Material toMaterial, ConfigManager configManager, SelectionVisualizer visualizer, TaskManager taskManager, BlockstateManager blockstateManager) {
         this.player = player;
         this.blocksToChange = blocksToChange;
         this.toMaterial = toMaterial;
         this.configManager = configManager;
         this.selectionVisualizer = visualizer;
         this.taskManager = taskManager;
+        this.blockstateManager = blockstateManager;
     }
 
     @Override
@@ -51,7 +54,7 @@ public class ReplaceTask extends BukkitRunnable {
             return;
         }
 
-        Block currentBlock = blocksToChange.get(0);
+        Block currentBlock = blocksToChange.remove(0);
 
         if (worker == null && configManager.isWorkerAnimationEnabled()) {
             spawnWorker(currentBlock.getLocation());
@@ -63,8 +66,12 @@ public class ReplaceTask extends BukkitRunnable {
             worker.swingMainHand();
         }
 
-        blocksToChange.remove(0);
-        currentBlock.setType(toMaterial);
+        BlockData copiedData = blockstateManager.getCopiedBlockstate(player);
+        if (copiedData != null && copiedData.getMaterial() == toMaterial) {
+            currentBlock.setBlockData(copiedData, false);
+        } else {
+            currentBlock.setType(toMaterial);
+        }
 
         if (configManager.getPlacementParticle() != null) {
             player.getWorld().spawnParticle(configManager.getPlacementParticle(), currentBlock.getLocation().clone().add(0.5, 0.5, 0.5), 1, 0, 0, 0, 0);
@@ -83,7 +90,6 @@ public class ReplaceTask extends BukkitRunnable {
         worker.setArms(true);
         worker.setBasePlate(false);
         worker.setSmall(true);
-
         worker.setHeadPose(new EulerAngle(Math.toRadians(25), 0, 0));
 
         if (configManager.shouldShowWorkerName()) {
@@ -103,7 +109,6 @@ public class ReplaceTask extends BukkitRunnable {
         worker.getEquipment().setItemInMainHand(new ItemStack(this.toMaterial, 1));
 
         Color armorColor = configManager.getWorkerArmorColor();
-
         ItemStack chestplate = new ItemStack(Material.LEATHER_CHESTPLATE, 1);
         LeatherArmorMeta chestMeta = (LeatherArmorMeta) chestplate.getItemMeta();
         chestMeta.setColor(armorColor);

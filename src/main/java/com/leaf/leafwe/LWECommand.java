@@ -10,15 +10,16 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 public class LWECommand implements CommandExecutor {
-
     private final ConfigManager configManager;
     private final UndoManager undoManager;
     private final PendingCommandManager pendingCommandManager;
+    private final BlockstateManager blockstateManager;
 
-    public LWECommand(LeafWE plugin, ConfigManager configManager, UndoManager undoManager, PendingCommandManager pendingCommandManager) {
+    public LWECommand(LeafWE plugin, ConfigManager configManager, UndoManager undoManager, PendingCommandManager pendingManager, BlockstateManager blockstateManager) {
         this.configManager = configManager;
         this.undoManager = undoManager;
-        this.pendingCommandManager = pendingCommandManager;
+        this.pendingCommandManager = pendingManager;
+        this.blockstateManager = blockstateManager;
     }
 
     @Override
@@ -27,26 +28,15 @@ public class LWECommand implements CommandExecutor {
             sender.sendMessage(configManager.getMessage("help-message"));
             return true;
         }
-
         switch (args[0].toLowerCase()) {
             case "reload":
-                if (!sender.hasPermission("leafwe.reload")) {
-                    sender.sendMessage(configManager.getMessage("no-permission"));
-                    return true;
-                }
+                if (!sender.hasPermission("leafwe.reload")) { sender.sendMessage(configManager.getMessage("no-permission")); return true; }
                 configManager.loadConfig();
                 sender.sendMessage(configManager.getMessage("reload-successful"));
                 break;
-
             case "give":
-                if (!sender.hasPermission("leafwe.give")) {
-                    sender.sendMessage(configManager.getMessage("no-permission"));
-                    return true;
-                }
-                if (args.length != 2) {
-                    sender.sendMessage(configManager.getMessage("invalid-usage-give"));
-                    return true;
-                }
+                if (!sender.hasPermission("leafwe.give")) { sender.sendMessage(configManager.getMessage("no-permission")); return true; }
+                if (args.length != 2) { sender.sendMessage(configManager.getMessage("invalid-usage-give")); return true; }
                 Player target = Bukkit.getPlayerExact(args[1]);
                 if (target == null) {
                     sender.sendMessage(configManager.getMessage("player-not-found").replaceText(config -> config.matchLiteral("%player%").replacement(args[1])));
@@ -65,37 +55,22 @@ public class LWECommand implements CommandExecutor {
                     sender.sendMessage(configManager.getMessage("wand-given-sender").replaceText(config -> config.matchLiteral("%player%").replacement(target.getName())));
                 }
                 break;
-
             case "undo":
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage(configManager.getMessage("players-only"));
-                    return true;
-                }
-                if (!player.hasPermission("leafwe.undo")) {
-                    player.sendMessage(configManager.getMessage("no-permission"));
-                    return true;
-                }
+                if (!(sender instanceof Player player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
+                if (!player.hasPermission("leafwe.undo")) { player.sendMessage(configManager.getMessage("no-permission")); return true; }
                 if (!undoManager.undoLastChange(player)) {
                     player.sendMessage(configManager.getMessage("no-undo"));
                 }
                 break;
-
             case "confirm":
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage(configManager.getMessage("players-only"));
-                    return true;
-                }
-                if (!player.hasPermission("leafwe.confirm")) {
-                    player.sendMessage(configManager.getMessage("no-permission"));
-                    return true;
-                }
+                if (!(sender instanceof Player player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
+                if (!player.hasPermission("leafwe.confirm")) { player.sendMessage(configManager.getMessage("no-permission")); return true; }
                 if (pendingCommandManager.confirm(player)) {
                     player.sendMessage(configManager.getMessage("confirmation-successful"));
                 } else {
                     player.sendMessage(configManager.getMessage("no-pending-confirmation"));
                 }
                 break;
-
             case "help":
             default:
                 sender.sendMessage(configManager.getMessage("help-message"));

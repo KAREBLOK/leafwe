@@ -22,8 +22,10 @@ public class WallCommand implements CommandExecutor {
     private final PendingCommandManager pendingCommandManager;
     private final SelectionVisualizer selectionVisualizer;
     private final TaskManager taskManager;
+    private final BlockstateManager blockstateManager;
+    private final GuiManager guiManager;
 
-    public WallCommand(LeafWE plugin, SelectionManager selManager, ConfigManager confManager, UndoManager undoManager, PendingCommandManager pendingManager, SelectionVisualizer visualizer, TaskManager taskManager) {
+    public WallCommand(LeafWE plugin, SelectionManager selManager, ConfigManager confManager, UndoManager undoManager, PendingCommandManager pendingManager, SelectionVisualizer visualizer, TaskManager taskManager, BlockstateManager blockstateManager, GuiManager guiManager) {
         this.plugin = plugin;
         this.selectionManager = selManager;
         this.configManager = confManager;
@@ -31,21 +33,27 @@ public class WallCommand implements CommandExecutor {
         this.pendingCommandManager = pendingManager;
         this.selectionVisualizer = visualizer;
         this.taskManager = taskManager;
+        this.blockstateManager = blockstateManager;
+        this.guiManager = guiManager;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
-        Player player = (Player) sender;
+        if (!(sender instanceof Player player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
         if (taskManager.hasActiveTask(player)) { player.sendMessage(configManager.getMessage("task-already-running")); return true; }
         if (!player.hasPermission("leafwe.wall")) { player.sendMessage(configManager.getMessage("no-permission")); return true; }
         if (configManager.getDisabledWorlds().contains(player.getWorld().getName().toLowerCase())) { player.sendMessage(configManager.getMessage("world-disabled")); return true; }
+
         Location pos1 = selectionManager.getPosition1(player);
         if (pos1 == null) { player.sendMessage(configManager.getMessage("select-pos1")); return true; }
         Location pos2 = selectionManager.getPosition2(player);
         if (pos2 == null) { player.sendMessage(configManager.getMessage("select-pos2")); return true; }
-        if (args.length == 0) { player.sendMessage(configManager.getMessage("wall-block-specify")); return true; }
-        if (args.length > 1) { player.sendMessage(configManager.getMessage("invalid-usage-wall")); return true; }
+
+        if (args.length == 0) {
+            guiManager.openBlockPickerGui(player, "wall", null);
+            return true;
+        }
+
         Material blockType;
         try {
             blockType = Material.valueOf(args[0].toUpperCase());
@@ -57,12 +65,12 @@ public class WallCommand implements CommandExecutor {
             player.sendMessage(configManager.getMessage("invalid-block").replaceText(config -> config.matchLiteral("%block%").replacement(args[0])));
             return true;
         }
+
         if (configManager.getBlockedMaterials().contains(blockType)) { player.sendMessage(configManager.getMessage("blacklisted-block")); return true; }
-        if (!player.getInventory().contains(blockType)) {
-            player.sendMessage(configManager.getMessage("inventory-empty").replaceText(config -> config.matchLiteral("%block%").replacement(blockType.name())));
-            return true;
-        }
+        if (!player.getInventory().contains(blockType)) { player.sendMessage(configManager.getMessage("inventory-empty").replaceText(config -> config.matchLiteral("%block%").replacement(blockType.name()))); return true; }
+
         List<Location> locationsToFill = new ArrayList<>();
+        Map<Location, BlockData> undoData = new HashMap<>();
         World world = pos1.getWorld();
         int minX = Math.min(pos1.getBlockX(), pos2.getBlockX());
         int minY = Math.min(pos1.getBlockY(), pos2.getBlockY());
@@ -70,30 +78,36 @@ public class WallCommand implements CommandExecutor {
         int maxX = Math.max(pos1.getBlockX(), pos2.getBlockX());
         int maxY = Math.max(pos1.getBlockY(), pos2.getBlockY());
         int maxZ = Math.max(pos1.getBlockZ(), pos2.getBlockZ());
+
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
                     if (x == minX || x == maxX || z == minZ || z == maxZ) {
-                        locationsToFill.add(new Location(world, x, y, z));
+                        Location loc = new Location(world, x, y, z);
+                        locationsToFill.add(loc);
+                        undoData.put(loc, loc.getBlock().getBlockData());
                     }
                 }
             }
         }
-        if (locationsToFill.isEmpty()){ player.sendMessage(Component.text("§cYou must select an area of at least 3x3 to build walls.")); return true; }
+        if (locationsToFill.isEmpty()) { player.sendMessage(Component.text("§cYou must select an area of at least 3x3 to build walls.")); return true; }
+
         long volume = locationsToFill.size();
         if (!player.hasPermission("leafwe.bypass.limit") && volume > configManager.getMaxVolume()) {
             player.sendMessage(configManager.getMessage("volume-limit-exceeded").replaceText(config -> config.matchLiteral("%limit%").replacement(String.valueOf(configManager.getMaxVolume()))));
             return true;
         }
+
+        final Material finalBlockType = blockType;
         Runnable executionTask = () -> {
-            Map<Location, BlockData> undoData = new HashMap<>();
-            for (Location loc : locationsToFill) { undoData.put(loc, loc.getBlock().getBlockData()); }
             undoManager.addHistory(player, undoData);
+            guiManager.setLastReplacedFrom(player, finalBlockType);
             player.sendMessage(configManager.getMessage("process-starting"));
-            BlockPlacerTask task = new BlockPlacerTask(player, locationsToFill, blockType, configManager, selectionVisualizer, taskManager);
+            BlockPlacerTask task = new BlockPlacerTask(player, locationsToFill, finalBlockType, configManager, selectionVisualizer, taskManager, blockstateManager);
             task.runTaskTimer(plugin, 2L, configManager.getSpeed());
             taskManager.startTask(player, task);
         };
+
         int confirmationLimit = configManager.getConfirmationLimit();
         if (confirmationLimit > 0 && volume > confirmationLimit) {
             if (pendingCommandManager.hasPending(player)) { player.sendMessage(configManager.getMessage("confirmation-pending")); return true; }

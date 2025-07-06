@@ -1,4 +1,4 @@
-# LeafWE Plugin Settings v3.0.0
+# LeafWE Plugin Settings v3.2
 
 # General settings for plugin behavior.
 settings:
@@ -7,6 +7,7 @@ settings:
   # Delay in ticks between each block placement (Lower = Faster, Higher = Slower). 20 ticks = 1 second.
   speed: 2
   # Particle effect to show when a block is placed. Set to 'NONE' to disable.
+  # Valid particle names: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Particle.html
   placement-particle: 'WAX_ON'
   # Enable selection visualization with particles (true/false).
   selection-visualizer: true
@@ -16,19 +17,17 @@ settings:
   max-undo: 10
   # The maximum volume of blocks a non-admin player can affect at once.
   max-volume: 50000
+
   # Settings for the success effect after an operation is complete.
   success-effect:
     enabled: true
     sound: 'ENTITY_PLAYER_LEVELUP'
-  #  Worker Heating Settings
-  worker-animation:
+
+  # Settings for the Pipette (Blockstate Copy) Tool
+  pipette-tool:
     enabled: true
-    show-name: true
-    name-template: '&a[Worker] %player%'
-    #  Determines how high the worker will stand above the block he will place. (1.5 is ideal)
-    y-offset: 1.5
-    # Sample colors: 0.255.255 (Aqua) | 255.0.0 (Red) | 138.43.226 (Blue-Purple)
-    armor-color: '0,255,255'
+    copy-sound: 'ENTITY_ITEM_PICKUP'
+    paste-sound: 'BLOCK_NOTE_BLOCK_PLING'
 
 # Properties of the selection wand.
 wand-tool:
@@ -38,6 +37,7 @@ wand-tool:
     - '&eUse this to select regions.'
     - '&7Left-Click: Set Position 1'
     - '&7Right-Click: Set Position 2'
+    - '&7Crouch + Right-Click: Copy Block State'
 
 # A list of materials that cannot be used with construction commands.
 blocked-materials:
@@ -50,3 +50,19 @@ blocked-materials:
   - 'SPAWNER'
   - 'TNT'
   - 'AIR'
+
+# LeafWE commands will be disabled in these worlds.
+disabled-worlds:
+  - 'world_lobby'
+  - 'arena'
+
+# Settings for the GUIs
+block-selector-gui:
+  title: '&1Select a Block'
+
+replace-gui:
+  title: '&1Block Replace Menu'
+  confirm-button-name: '&a&lCONFIRM & REPLACE'
+  confirm-button-lore:
+    - '&7Replaces the block in the left slot'
+    - '&7with the block in the right slot.'

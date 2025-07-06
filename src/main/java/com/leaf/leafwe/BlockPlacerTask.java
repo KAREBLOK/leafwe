@@ -4,6 +4,7 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -22,16 +23,18 @@ public class BlockPlacerTask extends BukkitRunnable {
     private final ConfigManager configManager;
     private final SelectionVisualizer selectionVisualizer;
     private final TaskManager taskManager;
+    private final BlockstateManager blockstateManager;
     private int blocksPlaced = 0;
     private ArmorStand worker = null;
 
-    public BlockPlacerTask(Player player, List<Location> locations, Material material, ConfigManager configManager, SelectionVisualizer visualizer, TaskManager taskManager) {
+    public BlockPlacerTask(Player player, List<Location> locations, Material material, ConfigManager configManager, SelectionVisualizer visualizer, TaskManager taskManager, BlockstateManager blockstateManager) {
         this.player = player;
         this.locationsToFill = locations;
         this.material = material;
         this.configManager = configManager;
         this.selectionVisualizer = visualizer;
         this.taskManager = taskManager;
+        this.blockstateManager = blockstateManager;
     }
 
     @Override
@@ -51,7 +54,7 @@ public class BlockPlacerTask extends BukkitRunnable {
             return;
         }
 
-        Location currentLocation = locationsToFill.get(0);
+        Location currentLocation = locationsToFill.remove(0);
 
         if (worker == null && configManager.isWorkerAnimationEnabled()) {
             spawnWorker(currentLocation);
@@ -63,9 +66,14 @@ public class BlockPlacerTask extends BukkitRunnable {
             worker.swingMainHand();
         }
 
-        locationsToFill.remove(0);
         if (currentLocation.getBlock().getType() != material) {
-            currentLocation.getBlock().setType(material);
+            BlockData copiedData = blockstateManager.getCopiedBlockstate(player);
+            if (copiedData != null && copiedData.getMaterial() == material) {
+                currentLocation.getBlock().setBlockData(copiedData, false);
+            } else {
+                currentLocation.getBlock().setType(material);
+            }
+
             if (configManager.getPlacementParticle() != null) {
                 player.getWorld().spawnParticle(configManager.getPlacementParticle(), currentLocation.clone().add(0.5, 0.5, 0.5), 1, 0, 0, 0, 0);
             }
