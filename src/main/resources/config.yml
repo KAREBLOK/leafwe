@@ -1,4 +1,4 @@
-# LeafWE Plugin Settings v3.2
+# LeafWE Plugin Settings v4.0.0
 
 # General settings for plugin behavior.
 settings:
@@ -29,6 +29,18 @@ settings:
     copy-sound: 'ENTITY_ITEM_PICKUP'
     paste-sound: 'BLOCK_NOTE_BLOCK_PLING'
 
+  # --- EKSİK OLAN VE YENİDEN EKLENEN BÖLÜM ---
+  # Settings for the worker Armor Stand animation.
+  worker-animation:
+    enabled: true
+    show-name: true
+    # %player% will be replaced with the player's name.
+    name-template: '&a[Worker] %player%'
+    # Determines how far above the block the worker stands. (1.5 is ideal)
+    y-offset: 1.5
+    # The color of the leather armor in R,G,B format.
+    armor-color: '0,255,255'
+
 # Properties of the selection wand.
 wand-tool:
   material: 'BLAZE_ROD'
@@ -43,11 +55,6 @@ wand-tool:
 blocked-materials:
   - 'BEDROCK'
   - 'COMMAND_BLOCK'
-  - 'CHAIN_COMMAND_BLOCK'
-  - 'REPEATING_COMMAND_BLOCK'
-  - 'BARRIER'
-  - 'STRUCTURE_VOID'
-  - 'SPAWNER'
   - 'TNT'
   - 'AIR'
 
