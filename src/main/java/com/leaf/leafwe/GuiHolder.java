@@ -40,6 +40,6 @@ public class GuiHolder implements InventoryHolder {
 
     @Override
     public Inventory getInventory() {
-        return null; // Bu metodun içini doldurmamıza gerek yok.
+        return null;
     }
 }
