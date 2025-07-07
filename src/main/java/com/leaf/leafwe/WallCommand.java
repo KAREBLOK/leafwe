@@ -25,6 +25,7 @@ public class WallCommand implements CommandExecutor {
     private final BlockstateManager blockstateManager;
     private final GuiManager guiManager;
 
+    // Constructor'dan ProtectionManager parametresi kaldırıldı
     public WallCommand(LeafWE plugin, SelectionManager selManager, ConfigManager confManager, UndoManager undoManager, PendingCommandManager pendingManager, SelectionVisualizer visualizer, TaskManager taskManager, BlockstateManager blockstateManager, GuiManager guiManager) {
         this.plugin = plugin;
         this.selectionManager = selManager;
@@ -39,15 +40,34 @@ public class WallCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
-        if (taskManager.hasActiveTask(player)) { player.sendMessage(configManager.getMessage("task-already-running")); return true; }
-        if (!player.hasPermission("leafwe.wall")) { player.sendMessage(configManager.getMessage("no-permission")); return true; }
-        if (configManager.getDisabledWorlds().contains(player.getWorld().getName().toLowerCase())) { player.sendMessage(configManager.getMessage("world-disabled")); return true; }
-
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(configManager.getMessage("players-only"));
+            return true;
+        }
+        if (taskManager.hasActiveTask(player)) {
+            player.sendMessage(configManager.getMessage("task-already-running"));
+            return true;
+        }
+        if (!player.hasPermission("leafwe.wall")) {
+            player.sendMessage(configManager.getMessage("no-permission"));
+            return true;
+        }
+        if (configManager.getDisabledWorlds().contains(player.getWorld().getName().toLowerCase())) {
+            player.sendMessage(configManager.getMessage("world-disabled"));
+            return true;
+        }
         Location pos1 = selectionManager.getPosition1(player);
-        if (pos1 == null) { player.sendMessage(configManager.getMessage("select-pos1")); return true; }
+        if (pos1 == null) {
+            player.sendMessage(configManager.getMessage("select-pos1"));
+            return true;
+        }
         Location pos2 = selectionManager.getPosition2(player);
-        if (pos2 == null) { player.sendMessage(configManager.getMessage("select-pos2")); return true; }
+        if (pos2 == null) {
+            player.sendMessage(configManager.getMessage("select-pos2"));
+            return true;
+        }
+
+        // WorldGuard kontrolü artık burada değil, WandListener içinde yapılıyor.
 
         if (args.length == 0) {
             guiManager.openBlockPickerGui(player, "wall", null);
@@ -66,8 +86,14 @@ public class WallCommand implements CommandExecutor {
             return true;
         }
 
-        if (configManager.getBlockedMaterials().contains(blockType)) { player.sendMessage(configManager.getMessage("blacklisted-block")); return true; }
-        if (!player.getInventory().contains(blockType)) { player.sendMessage(configManager.getMessage("inventory-empty").replaceText(config -> config.matchLiteral("%block%").replacement(blockType.name()))); return true; }
+        if (configManager.getBlockedMaterials().contains(blockType)) {
+            player.sendMessage(configManager.getMessage("blacklisted-block"));
+            return true;
+        }
+        if (!player.getInventory().contains(blockType)) {
+            player.sendMessage(configManager.getMessage("inventory-empty").replaceText(config -> config.matchLiteral("%block%").replacement(blockType.name())));
+            return true;
+        }
 
         List<Location> locationsToFill = new ArrayList<>();
         Map<Location, BlockData> undoData = new HashMap<>();
@@ -90,7 +116,10 @@ public class WallCommand implements CommandExecutor {
                 }
             }
         }
-        if (locationsToFill.isEmpty()) { player.sendMessage(Component.text("§cYou must select an area of at least 3x3 to build walls.")); return true; }
+        if (locationsToFill.isEmpty()) {
+            player.sendMessage(Component.text("§cYou must select an area of at least 3x3 to build walls."));
+            return true;
+        }
 
         long volume = locationsToFill.size();
         if (!player.hasPermission("leafwe.bypass.limit") && volume > configManager.getMaxVolume()) {
@@ -110,7 +139,10 @@ public class WallCommand implements CommandExecutor {
 
         int confirmationLimit = configManager.getConfirmationLimit();
         if (confirmationLimit > 0 && volume > confirmationLimit) {
-            if (pendingCommandManager.hasPending(player)) { player.sendMessage(configManager.getMessage("confirmation-pending")); return true; }
+            if (pendingCommandManager.hasPending(player)) {
+                player.sendMessage(configManager.getMessage("confirmation-pending"));
+                return true;
+            }
             pendingCommandManager.setPending(player, executionTask);
             player.sendMessage(configManager.getMessage("confirmation-required").replaceText(config -> config.matchLiteral("%total%").replacement(String.valueOf(volume))));
         } else {

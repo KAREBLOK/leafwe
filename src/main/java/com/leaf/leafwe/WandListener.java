@@ -10,6 +10,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+
 import java.util.Objects;
 
 public class WandListener implements Listener {
@@ -17,45 +18,59 @@ public class WandListener implements Listener {
     private final ConfigManager configManager;
     private final SelectionVisualizer selectionVisualizer;
     private final BlockstateManager blockstateManager;
+    private final ProtectionManager protectionManager;
 
-    public WandListener(SelectionManager manager, ConfigManager configManager, SelectionVisualizer visualizer, BlockstateManager blockstateManager) {
+    public WandListener(SelectionManager manager, ConfigManager configManager, SelectionVisualizer visualizer, BlockstateManager blockstateManager, ProtectionManager protectionManager) {
         this.selectionManager = manager;
         this.configManager = configManager;
         this.selectionVisualizer = visualizer;
         this.blockstateManager = blockstateManager;
+        this.protectionManager = protectionManager;
     }
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
+        // Oyuncunun elindeki eşyanın bizim özel seçim çubuğumuz olup olmadığını kontrol et
         if (isWand(event.getItem())) {
+            // Seçim çubuğu ile yapılan tüm varsayılan eylemleri iptal et (blok kırma, sandık açma vb.)
+            event.setCancelled(true);
+
             Block clickedBlock = event.getClickedBlock();
 
+            // Önce Pipet Aracı özelliğini kontrol et (eğilip sağ tıklama)
             if (configManager.isPipetteToolEnabled() && player.isSneaking() && (event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR)) {
-                event.setCancelled(true);
                 handlePipetteAction(player, clickedBlock);
-                return;
+                return; // Pipet işlemi yapıldıysa, normal seçim işlemine devam etme
             }
 
+            // Normal seçim işlemi (sol veya sağ tık)
             if (clickedBlock != null) {
-                if (event.getAction() == Action.LEFT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-                    event.setCancelled(true);
+                Location loc = clickedBlock.getLocation();
 
-                    Location loc = clickedBlock.getLocation();
-                    if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
-                        selectionManager.setPosition1(player, loc);
-                        player.sendMessage(configManager.getMessage("pos1-set"));
-                    } else {
-                        selectionManager.setPosition2(player, loc);
-                        player.sendMessage(configManager.getMessage("pos2-set"));
-                    }
-                    selectionVisualizer.start(player);
+                // WorldGuard KORUMA KONTROLÜ
+                // Seçim yapmadan hemen önce, oyuncunun bu bloğa dokunma izni var mı diye kontrol et
+                if (!protectionManager.canBuild(player, loc)) {
+                    player.sendMessage(configManager.getMessage("protection-no-permission"));
+                    return; // İzin yoksa, seçim yaptırma ve işlemi durdur
                 }
+
+                if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
+                    selectionManager.setPosition1(player, loc);
+                    player.sendMessage(configManager.getMessage("pos1-set"));
+                } else if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                    selectionManager.setPosition2(player, loc);
+                    player.sendMessage(configManager.getMessage("pos2-set"));
+                }
+
+                // Her seçimden sonra partikül görselleştirmesini başlat/güncelle
+                selectionVisualizer.start(player);
             }
         }
     }
 
     private void handlePipetteAction(Player player, Block clickedBlock) {
+        // Eğilip boşluğa sağ tıklarsa kopyalanmış veriyi temizle
         if (clickedBlock == null || clickedBlock.getType().isAir()) {
             if (blockstateManager.getCopiedBlockstate(player) != null) {
                 blockstateManager.clearCopiedBlockstate(player);
@@ -64,6 +79,7 @@ public class WandListener implements Listener {
             return;
         }
 
+        // Bir bloğa tıklarsa, verisini kopyala
         blockstateManager.setCopiedBlockstate(player, clickedBlock.getBlockData());
         player.playSound(player.getLocation(), configManager.getPipetteCopySound(), 1.0f, 1.2f);
         Component message = configManager.getMessage("blockstate-copied")
@@ -72,9 +88,13 @@ public class WandListener implements Listener {
     }
 
     private boolean isWand(ItemStack item) {
-        if (item == null || item.getType() != configManager.getWandMaterial()) return false;
+        if (item == null || item.getType() != configManager.getWandMaterial()) {
+            return false;
+        }
         ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasDisplayName() || !meta.hasLore()) return false;
+        if (meta == null || !meta.hasDisplayName() || !meta.hasLore()) {
+            return false;
+        }
         return Objects.equals(meta.displayName(), configManager.getWandName()) &&
                 Objects.equals(meta.lore(), configManager.getWandLore());
     }

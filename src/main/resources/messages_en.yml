@@ -45,6 +45,7 @@ messages:
   confirmation-successful: '&aOperation confirmed and started.'
   world-disabled: '&cLeafWE commands cannot be used in this world.'
   task-already-running: '&cYou already have an active operation. Please wait for it to finish.'
+  protection-no-permission: '&cYou cannot select a position in this protected area.'
 
   # GUI Messages
   gui-opened: '&ePlease select a block from the menu.'

@@ -42,3 +42,6 @@ permissions:
   leafwe.bypass.limit:
     description: Grants permission to bypass the maximum volume limit.
     default: op
+  leafwe.bypass.protection:
+    description: Permission to bypass protections like WorldGuard and Towny.
+    default: op

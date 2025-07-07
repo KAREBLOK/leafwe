@@ -45,6 +45,7 @@ messages:
   confirmation-successful: '&aİşlem onaylandı ve başlatıldı.'
   world-disabled: '&cLeafWE komutları bu dünyada kullanılamaz.'
   task-already-running: '&cZaten devam eden bir işleminiz var. Lütfen bitmesini bekleyin.'
+  protection-no-permission: '&cBu korumalı alanda pozisyon seçemezsiniz.'
 
   # GUI Mesajları
   gui-opened: '&eLütfen menüden bir blok seçin.'

@@ -26,6 +26,7 @@ public class ReplaceCommand implements CommandExecutor {
     private final BlockstateManager blockstateManager;
     private final GuiManager guiManager;
 
+    // Constructor'dan ProtectionManager parametresi kaldırıldı
     public ReplaceCommand(LeafWE plugin, SelectionManager selManager, ConfigManager confManager, UndoManager undoManager, PendingCommandManager pendingManager, SelectionVisualizer visualizer, TaskManager taskManager, BlockstateManager blockstateManager, GuiManager guiManager) {
         this.plugin = plugin;
         this.selectionManager = selManager;
@@ -66,6 +67,8 @@ public class ReplaceCommand implements CommandExecutor {
             player.sendMessage(configManager.getMessage("select-pos2"));
             return true;
         }
+
+        // WorldGuard kontrolü artık burada değil, WandListener içinde yapılıyor.
 
         if (args.length == 0) {
             guiManager.openReplaceGui(player);
@@ -120,7 +123,7 @@ public class ReplaceCommand implements CommandExecutor {
                 }
             }
         }
-        if (blocksToChange.isEmpty()){
+        if (blocksToChange.isEmpty()) {
             player.sendMessage(Component.text("§cNo '" + fromBlock.name() + "' blocks found in the selected area."));
             return true;
         }
