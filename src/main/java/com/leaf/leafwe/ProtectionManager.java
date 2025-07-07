@@ -12,32 +12,27 @@ public class ProtectionManager {
 
     public ProtectionManager(LeafWE plugin) {
         this.plugin = plugin;
-        // Constructor'da hook'ları başlatma - onEnable'da yapılacak
     }
 
-    // onEnable'dan sonra çağrılacak
     public void initializeHooksDelayed() {
         initializeHooks();
     }
 
     private void initializeHooks() {
-        // WorldGuard kontrolü
         Plugin wgPlugin = plugin.getServer().getPluginManager().getPlugin("WorldGuard");
         plugin.getLogger().info("WorldGuard plugin check: " + (wgPlugin != null ? "Found" : "Not Found"));
 
         if (wgPlugin != null) {
             plugin.getLogger().info("WorldGuard enabled status: " + wgPlugin.isEnabled());
-            plugin.getLogger().info("WorldGuard version: " + wgPlugin.getDescription().getVersion());
+            plugin.getLogger().info("WorldGuard version: " + wgPlugin.getName() + " v" + wgPlugin.getDescription().getName());
 
             try {
-                // WorldGuard sınıflarının yüklenip yüklenmediğini kontrol et
                 Class.forName("com.sk89q.worldguard.WorldGuard");
                 plugin.getLogger().info("WorldGuard main class loaded successfully");
 
                 Class.forName("com.sk89q.worldguard.bukkit.WorldGuardPlugin");
                 plugin.getLogger().info("WorldGuardPlugin class loaded successfully");
 
-                // Test WorldGuard instance
                 com.sk89q.worldguard.WorldGuard wgInstance = com.sk89q.worldguard.WorldGuard.getInstance();
                 plugin.getLogger().info("WorldGuard instance obtained: " + (wgInstance != null));
 
@@ -56,11 +51,9 @@ public class ProtectionManager {
             plugin.getLogger().info("WorldGuard not found. Protection hook disabled.");
         }
 
-        // SuperiorSkyblock kontrolü
         Plugin ssbPlugin = plugin.getServer().getPluginManager().getPlugin("SuperiorSkyblock2");
         if (ssbPlugin != null && ssbPlugin.isEnabled()) {
             try {
-                // SuperiorSkyblock API sınıflarının yüklenip yüklenmediğini kontrol et
                 Class.forName("com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI");
                 this.superiorSkyblockEnabled = true;
                 plugin.getLogger().info("SuperiorSkyblock2 hook enabled successfully.");
@@ -72,7 +65,6 @@ public class ProtectionManager {
             plugin.getLogger().info("SuperiorSkyblock2 not found. Protection hook disabled.");
         }
 
-        // Debug: Hook durumları
         plugin.getLogger().info("Protection Manager Status: WG=" + worldGuardEnabled + ", SSB=" + superiorSkyblockEnabled);
     }
 
@@ -81,17 +73,14 @@ public class ProtectionManager {
             return false;
         }
 
-        // Debug
         plugin.getLogger().info("Checking build permission for " + player.getName() +
                 " at " + location.getBlockX() + "," + location.getBlockY() + "," + location.getBlockZ());
 
-        // Bypass permission kontrolü
         if (player.hasPermission("leafwe.bypass.protection")) {
             plugin.getLogger().info("Player has bypass permission - allowing");
             return true;
         }
 
-        // WorldGuard kontrolü
         if (worldGuardEnabled) {
             plugin.getLogger().info("Checking WorldGuard permissions...");
             try {
@@ -110,7 +99,6 @@ public class ProtectionManager {
             plugin.getLogger().info("WorldGuard disabled - allowing");
         }
 
-        // SuperiorSkyblock kontrolü
         if (superiorSkyblockEnabled) {
             try {
                 boolean canBuild = checkSuperiorSkyblockPermission(player, location);
@@ -157,7 +145,6 @@ public class ProtectionManager {
                         com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI.getPlayer(player);
                 return island.isMember(superiorPlayer);
             } else {
-                // Eğer bir ada dünyasında ama ada yoksa, bu yasak bir alan
                 if (com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI.getGrid()
                         .isIslandsWorld(location.getWorld())) {
                     return false;
