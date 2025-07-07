@@ -17,44 +17,126 @@ public final class LeafWE extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Plugin başladığında tüm yönetici sınıflarını başlat
-        this.configManager = new ConfigManager(this);
-        this.selectionManager = new SelectionManager();
-        this.undoManager = new UndoManager(this, configManager);
-        this.pendingCommandManager = new PendingCommandManager(this);
-        this.selectionVisualizer = new SelectionVisualizer(this, selectionManager, configManager);
-        this.taskManager = new TaskManager();
-        this.blockstateManager = new BlockstateManager();
-        this.guiManager = new GuiManager(this, configManager);
-        this.protectionManager = new ProtectionManager(this); // Yeni yöneticiyi başlat
+        try {
+            // Plugin başladığında tüm yönetici sınıflarını başlat
+            this.configManager = new ConfigManager(this);
+            this.selectionManager = new SelectionManager();
+            this.undoManager = new UndoManager(this, configManager);
+            this.pendingCommandManager = new PendingCommandManager(this);
+            this.selectionVisualizer = new SelectionVisualizer(this, selectionManager, configManager);
+            this.taskManager = new TaskManager();
+            this.blockstateManager = new BlockstateManager();
+            this.guiManager = new GuiManager(this, configManager);
+            this.protectionManager = new ProtectionManager(this); // Yeni yöneticiyi başlat
 
-        // Komutları ve dinleyicileri kaydet
-        registerCommands();
-        registerListeners();
+            // Komutları ve dinleyicileri kaydet
+            registerCommands();
+            registerListeners();
 
-        getLogger().info("LeafWE v3.5 successfully enabled!");
+            // WorldGuard hook'unu 1 tick sonra çalıştır
+            getServer().getScheduler().runTaskLater(this, () -> {
+                if (protectionManager != null) {
+                    protectionManager.initializeHooksDelayed();
+                }
+            }, 1L);
+
+            getLogger().info("LeafWE v3.7.0 successfully enabled!");
+
+        } catch (Exception e) {
+            getLogger().severe("Failed to enable LeafWE: " + e.getMessage());
+            e.printStackTrace();
+            getServer().getPluginManager().disablePlugin(this);
+        }
     }
 
     private void registerCommands() {
-        // Komut sınıflarına artık ProtectionManager da gönderiliyor
-        this.getCommand("set").setExecutor(new SetCommand(this, selectionManager, configManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager, blockstateManager, guiManager));
-        this.getCommand("wall").setExecutor(new WallCommand(this, selectionManager, configManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager, blockstateManager, guiManager));
-        this.getCommand("replace").setExecutor(new ReplaceCommand(this, selectionManager, configManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager, blockstateManager, guiManager));
-        this.getCommand("lwe").setExecutor(new LWECommand(this, configManager, undoManager, pendingCommandManager, blockstateManager));
+        try {
+            // Komut sınıflarına artık ProtectionManager da gönderiliyor
+            this.getCommand("set").setExecutor(new SetCommand(this, selectionManager, configManager, undoManager,
+                    pendingCommandManager, selectionVisualizer, taskManager, blockstateManager, guiManager));
+            this.getCommand("wall").setExecutor(new WallCommand(this, selectionManager, configManager, undoManager,
+                    pendingCommandManager, selectionVisualizer, taskManager, blockstateManager, guiManager));
+            this.getCommand("replace").setExecutor(new ReplaceCommand(this, selectionManager, configManager, undoManager,
+                    pendingCommandManager, selectionVisualizer, taskManager, blockstateManager, guiManager));
+            this.getCommand("lwe").setExecutor(new LWECommand(this, configManager, undoManager,
+                    pendingCommandManager, blockstateManager));
+
+        } catch (Exception e) {
+            getLogger().severe("Failed to register commands: " + e.getMessage());
+        }
     }
 
     private void registerListeners() {
-        // Listener'ların constructor'ları bu değişiklikten etkilenmiyor
-        getServer().getPluginManager().registerEvents(new WandListener(selectionManager, configManager, selectionVisualizer, blockstateManager, protectionManager), this);
-        getServer().getPluginManager().registerEvents(new PlayerListener(selectionManager, undoManager, pendingCommandManager, selectionVisualizer, taskManager, blockstateManager), this);
-        getServer().getPluginManager().registerEvents(new GuiListener(configManager, guiManager), this);
+        try {
+            // Listener'ların constructor'ları bu değişiklikten etkilenmiyor
+            getServer().getPluginManager().registerEvents(new WandListener(selectionManager, configManager,
+                    selectionVisualizer, blockstateManager, protectionManager), this);
+            getServer().getPluginManager().registerEvents(new PlayerListener(selectionManager, undoManager,
+                    pendingCommandManager, selectionVisualizer, taskManager, blockstateManager), this);
+            getServer().getPluginManager().registerEvents(new GuiListener(configManager, guiManager), this);
+
+        } catch (Exception e) {
+            getLogger().severe("Failed to register listeners: " + e.getMessage());
+        }
     }
 
     @Override
     public void onDisable() {
-        if (selectionVisualizer != null) {
-            selectionVisualizer.shutdown();
+        try {
+            // Cleanup tasks
+            if (taskManager != null) {
+                taskManager.cancelAllTasks();
+            }
+
+            if (selectionVisualizer != null) {
+                selectionVisualizer.shutdown();
+            }
+
+            if (blockstateManager != null) {
+                blockstateManager.cleanupAll();
+            }
+
+            getLogger().info("LeafWE disabled successfully.");
+
+        } catch (Exception e) {
+            getLogger().severe("Error during plugin disable: " + e.getMessage());
         }
-        getLogger().info("LeafWE disabled.");
+    }
+
+    // Getter methods for other classes to access managers
+    public ConfigManager getConfigManager() {
+        return configManager;
+    }
+
+    public SelectionManager getSelectionManager() {
+        return selectionManager;
+    }
+
+    public UndoManager getUndoManager() {
+        return undoManager;
+    }
+
+    public PendingCommandManager getPendingCommandManager() {
+        return pendingCommandManager;
+    }
+
+    public SelectionVisualizer getSelectionVisualizer() {
+        return selectionVisualizer;
+    }
+
+    public TaskManager getTaskManager() {
+        return taskManager;
+    }
+
+    public BlockstateManager getBlockstateManager() {
+        return blockstateManager;
+    }
+
+    public GuiManager getGuiManager() {
+        return guiManager;
+    }
+
+    public ProtectionManager getProtectionManager() {
+        return protectionManager;
     }
 }

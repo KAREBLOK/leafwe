@@ -1,15 +1,5 @@
 package com.leaf.leafwe;
 
-import com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI;
-import com.bgsoftware.superiorskyblock.api.island.Island;
-import com.bgsoftware.superiorskyblock.api.wrappers.SuperiorPlayer;
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldguard.LocalPlayer;
-import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
-import com.sk89q.worldguard.protection.flags.Flags;
-import com.sk89q.worldguard.protection.regions.RegionContainer;
-import com.sk89q.worldguard.protection.regions.RegionQuery;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -18,55 +8,173 @@ public class ProtectionManager {
 
     private boolean worldGuardEnabled = false;
     private boolean superiorSkyblockEnabled = false;
+    private final LeafWE plugin;
 
     public ProtectionManager(LeafWE plugin) {
+        this.plugin = plugin;
+        // Constructor'da hook'ları başlatma - onEnable'da yapılacak
+    }
+
+    // onEnable'dan sonra çağrılacak
+    public void initializeHooksDelayed() {
+        initializeHooks();
+    }
+
+    private void initializeHooks() {
+        // WorldGuard kontrolü
         Plugin wgPlugin = plugin.getServer().getPluginManager().getPlugin("WorldGuard");
+        plugin.getLogger().info("WorldGuard plugin check: " + (wgPlugin != null ? "Found" : "Not Found"));
+
         if (wgPlugin != null) {
-            this.worldGuardEnabled = true;
-            plugin.getLogger().info("WorldGuard hook enabled.");
+            plugin.getLogger().info("WorldGuard enabled status: " + wgPlugin.isEnabled());
+            plugin.getLogger().info("WorldGuard version: " + wgPlugin.getDescription().getVersion());
+
+            try {
+                // WorldGuard sınıflarının yüklenip yüklenmediğini kontrol et
+                Class.forName("com.sk89q.worldguard.WorldGuard");
+                plugin.getLogger().info("WorldGuard main class loaded successfully");
+
+                Class.forName("com.sk89q.worldguard.bukkit.WorldGuardPlugin");
+                plugin.getLogger().info("WorldGuardPlugin class loaded successfully");
+
+                // Test WorldGuard instance
+                com.sk89q.worldguard.WorldGuard wgInstance = com.sk89q.worldguard.WorldGuard.getInstance();
+                plugin.getLogger().info("WorldGuard instance obtained: " + (wgInstance != null));
+
+                this.worldGuardEnabled = true;
+                plugin.getLogger().info("WorldGuard hook enabled successfully.");
+            } catch (ClassNotFoundException e) {
+                plugin.getLogger().warning("WorldGuard found but incompatible version detected: " + e.getMessage());
+                this.worldGuardEnabled = false;
+            } catch (Exception e) {
+                plugin.getLogger().warning("WorldGuard integration error: " + e.getMessage());
+                e.printStackTrace();
+                this.worldGuardEnabled = false;
+            }
+
         } else {
             plugin.getLogger().info("WorldGuard not found. Protection hook disabled.");
         }
 
+        // SuperiorSkyblock kontrolü
         Plugin ssbPlugin = plugin.getServer().getPluginManager().getPlugin("SuperiorSkyblock2");
-        if (ssbPlugin != null) {
-            this.superiorSkyblockEnabled = true;
-            plugin.getLogger().info("SuperiorSkyblock2 hook enabled.");
+        if (ssbPlugin != null && ssbPlugin.isEnabled()) {
+            try {
+                // SuperiorSkyblock API sınıflarının yüklenip yüklenmediğini kontrol et
+                Class.forName("com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI");
+                this.superiorSkyblockEnabled = true;
+                plugin.getLogger().info("SuperiorSkyblock2 hook enabled successfully.");
+            } catch (ClassNotFoundException e) {
+                plugin.getLogger().warning("SuperiorSkyblock2 found but API not available: " + e.getMessage());
+                this.superiorSkyblockEnabled = false;
+            }
         } else {
             plugin.getLogger().info("SuperiorSkyblock2 not found. Protection hook disabled.");
         }
+
+        // Debug: Hook durumları
+        plugin.getLogger().info("Protection Manager Status: WG=" + worldGuardEnabled + ", SSB=" + superiorSkyblockEnabled);
     }
 
     public boolean canBuild(Player player, Location location) {
+        if (player == null || location == null) {
+            return false;
+        }
+
+        // Debug
+        plugin.getLogger().info("Checking build permission for " + player.getName() +
+                " at " + location.getBlockX() + "," + location.getBlockY() + "," + location.getBlockZ());
+
+        // Bypass permission kontrolü
         if (player.hasPermission("leafwe.bypass.protection")) {
+            plugin.getLogger().info("Player has bypass permission - allowing");
             return true;
         }
 
+        // WorldGuard kontrolü
         if (worldGuardEnabled) {
-            LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(player);
-            RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-            RegionQuery query = container.createQuery();
-            if (!query.testState(BukkitAdapter.adapt(location), localPlayer, Flags.BUILD)) {
+            plugin.getLogger().info("Checking WorldGuard permissions...");
+            try {
+                boolean canBuild = checkWorldGuardPermission(player, location);
+                plugin.getLogger().info("WorldGuard result: " + canBuild);
+                if (!canBuild) {
+                    player.sendMessage("§c[LeafWE] WorldGuard: Build permission denied in this region!");
+                    return false;
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("Error checking WorldGuard permissions: " + e.getMessage());
+                e.printStackTrace();
+                return false;
+            }
+        } else {
+            plugin.getLogger().info("WorldGuard disabled - allowing");
+        }
+
+        // SuperiorSkyblock kontrolü
+        if (superiorSkyblockEnabled) {
+            try {
+                boolean canBuild = checkSuperiorSkyblockPermission(player, location);
+                if (!canBuild) {
+                    player.sendMessage("§c[LeafWE] SuperiorSkyblock: Build permission denied!");
+                    return false;
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("Error checking SuperiorSkyblock permissions: " + e.getMessage());
                 return false;
             }
         }
 
-        if (superiorSkyblockEnabled) {
-            Island island = SuperiorSkyblockAPI.getIslandAt(location);
+        plugin.getLogger().info("All checks passed - allowing build");
+        return true;
+    }
+
+    private boolean checkWorldGuardPermission(Player player, Location location) {
+        try {
+            com.sk89q.worldguard.LocalPlayer localPlayer =
+                    com.sk89q.worldguard.bukkit.WorldGuardPlugin.inst().wrapPlayer(player);
+            com.sk89q.worldguard.protection.regions.RegionContainer container =
+                    com.sk89q.worldguard.WorldGuard.getInstance().getPlatform().getRegionContainer();
+            com.sk89q.worldguard.protection.regions.RegionQuery query = container.createQuery();
+
+            return query.testState(
+                    com.sk89q.worldedit.bukkit.BukkitAdapter.adapt(location),
+                    localPlayer,
+                    com.sk89q.worldguard.protection.flags.Flags.BUILD
+            );
+        } catch (Exception e) {
+            plugin.getLogger().warning("WorldGuard permission check failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean checkSuperiorSkyblockPermission(Player player, Location location) {
+        try {
+            com.bgsoftware.superiorskyblock.api.island.Island island =
+                    com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI.getIslandAt(location);
+
             if (island != null) {
-                SuperiorPlayer superiorPlayer = SuperiorSkyblockAPI.getPlayer(player);
-                if (!island.isMember(superiorPlayer)) {
-                    return false;
-                }
+                com.bgsoftware.superiorskyblock.api.wrappers.SuperiorPlayer superiorPlayer =
+                        com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI.getPlayer(player);
+                return island.isMember(superiorPlayer);
             } else {
-                // DÜZELTME: Doğru metod adı 'isSkyblockWorld' değil, 'getGrid' olmalı.
-                // Eğer o dünyada bir ada ızgarası (grid) varsa, o bir ada dünyasıdır.
-                if (SuperiorSkyblockAPI.getGrid().isIslandsWorld(location.getWorld())) {
+                // Eğer bir ada dünyasında ama ada yoksa, bu yasak bir alan
+                if (com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI.getGrid()
+                        .isIslandsWorld(location.getWorld())) {
                     return false;
                 }
             }
+            return true;
+        } catch (Exception e) {
+            plugin.getLogger().warning("SuperiorSkyblock permission check failed: " + e.getMessage());
+            return false;
         }
+    }
 
-        return true;
+    public boolean isWorldGuardEnabled() {
+        return worldGuardEnabled;
+    }
+
+    public boolean isSuperiorSkyblockEnabled() {
+        return superiorSkyblockEnabled;
     }
 }

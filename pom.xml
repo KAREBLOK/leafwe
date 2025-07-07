@@ -6,17 +6,23 @@
 
   <groupId>com.leaf</groupId>
   <artifactId>leafwe</artifactId>
-  <version>3.7.0</version>
+  <version>4.0.2</version>
   <packaging>jar</packaging>
 
   <name>LeafWE</name>
+  <description>A lightweight WorldEdit alternative for Minecraft servers</description>
 
   <properties>
     <java.version>17</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
   </properties>
 
   <build>
+    <defaultGoal>clean package</defaultGoal>
+    <finalName>${project.artifactId}-${project.version}</finalName>
+
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -25,12 +31,33 @@
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
+          <encoding>UTF-8</encoding>
+          <compilerArgs>
+            <arg>-proc:none</arg>
+          </compilerArgs>
         </configuration>
       </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
         <version>3.5.1</version>
+        <configuration>
+          <createDependencyReducedPom>false</createDependencyReducedPom>
+          <filters>
+            <filter>
+              <artifact>*:*</artifact>
+              <excludes>
+                <exclude>META-INF/*.SF</exclude>
+                <exclude>META-INF/*.DSA</exclude>
+                <exclude>META-INF/*.RSA</exclude>
+                <exclude>META-INF/DEPENDENCIES</exclude>
+                <exclude>META-INF/LICENSE*</exclude>
+                <exclude>META-INF/NOTICE*</exclude>
+              </excludes>
+            </filter>
+          </filters>
+        </configuration>
         <executions>
           <execution>
             <phase>package</phase>
@@ -40,7 +67,26 @@
           </execution>
         </executions>
       </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+              <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+            </manifest>
+            <manifestEntries>
+              <Built-By>LeafWE</Built-By>
+              <Build-Time>${maven.build.timestamp}</Build-Time>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
     </plugins>
+
     <resources>
       <resource>
         <directory>src/main/resources</directory>
@@ -50,21 +96,33 @@
   </build>
 
   <repositories>
+    <!-- Paper Repository -->
     <repository>
       <id>papermc-repo</id>
       <url>https://repo.papermc.io/repository/maven-public/</url>
     </repository>
+
+    <!-- EngineHub Repository (WorldEdit/WorldGuard) -->
     <repository>
       <id>enginehub-repo</id>
       <url>https://maven.enginehub.org/repo/</url>
     </repository>
+
+    <!-- BG Software Repository (SuperiorSkyblock) -->
     <repository>
       <id>bg-code-repo</id>
       <url>https://repo.bg-software.com/repository/api/</url>
     </repository>
+
+    <!-- Sonatype Repository (fallback) -->
+    <repository>
+      <id>sonatype</id>
+      <url>https://oss.sonatype.org/content/groups/public/</url>
+    </repository>
   </repositories>
 
   <dependencies>
+    <!-- Paper API -->
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
@@ -72,20 +130,39 @@
       <scope>provided</scope>
     </dependency>
 
+    <!-- WorldGuard -->
     <dependency>
       <groupId>com.sk89q.worldguard</groupId>
       <artifactId>worldguard-bukkit</artifactId>
-      <version>7.0.8</version>
+      <version>7.0.9</version>
       <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.bukkit</groupId>
+          <artifactId>bukkit</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
+    <!-- WorldEdit -->
     <dependency>
       <groupId>com.sk89q.worldedit</groupId>
       <artifactId>worldedit-bukkit</artifactId>
-      <version>7.2.14</version>
+      <version>7.2.15</version>
       <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.bukkit</groupId>
+          <artifactId>bukkit</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.sk89q.worldedit.worldedit-libs</groupId>
+          <artifactId>core</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
+    <!-- SuperiorSkyblock API -->
     <dependency>
       <groupId>com.bgsoftware</groupId>
       <artifactId>SuperiorSkyblockAPI</artifactId>

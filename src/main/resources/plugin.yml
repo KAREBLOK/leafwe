@@ -1,47 +1,69 @@
 name: LeafWE
-version: ${project.version}
+version: '${project.version}'
 main: com.leaf.leafwe.LeafWE
 api-version: 1.19
-author: BaranMRJ
-description: An advanced construction manager plugin.
+author: LeafDev
+description: A lightweight WorldEdit alternative for Minecraft servers
+website: https://github.com/leaf/leafwe
+
+# Load after WorldGuard
+softdepend: [WorldGuard, SuperiorSkyblock2]
+
 commands:
   set:
-    description: Fills the selected area with a specified block.
-    usage: /set <block_name>
+    description: Fill selected area with blocks
+    usage: /<command> <block>
+    permission: leafwe.use
   wall:
-    description: Builds the walls of the selected area.
-    usage: /wall <block_name>
+    description: Create walls around selected area
+    usage: /<command> <block>
+    permission: leafwe.wall
   replace:
-    description: Replaces blocks within the selected area.
-    usage: /replace <from_block> <to_block>
+    description: Replace blocks in selected area
+    usage: /<command> <from_block> <to_block>
+    permission: leafwe.replace
   lwe:
-    description: Main LeafWE command.
+    description: LeafWE main command
+    usage: /<command> [reload|give|undo|confirm|help]
     aliases: [leafwe]
+
 permissions:
+  leafwe.*:
+    description: All LeafWE permissions
+    children:
+      leafwe.use: true
+      leafwe.wall: true
+      leafwe.replace: true
+      leafwe.undo: true
+      leafwe.confirm: true
+      leafwe.give: true
+      leafwe.reload: true
+      leafwe.bypass.limit: true
+      leafwe.bypass.protection: true
   leafwe.use:
-    description: Grants permission to use the /set command.
+    description: Use /set command
     default: true
   leafwe.wall:
-    description: Grants permission to use the /wall command.
+    description: Use /wall command
     default: true
   leafwe.replace:
-    description: Grants permission to use the /replace command.
-    default: op
-  leafwe.reload:
-    description: Grants permission to use the /lwe reload command.
-    default: op
-  leafwe.give:
-    description: Grants permission to use the /lwe give command.
-    default: op
+    description: Use /replace command
+    default: true
   leafwe.undo:
-    description: Grants permission to use the /lwe undo command.
+    description: Use /lwe undo command
     default: true
   leafwe.confirm:
-    description: Grants permission to confirm pending operations.
+    description: Use /lwe confirm command
     default: true
+  leafwe.give:
+    description: Use /lwe give command
+    default: op
+  leafwe.reload:
+    description: Use /lwe reload command
+    default: op
   leafwe.bypass.limit:
-    description: Grants permission to bypass the maximum volume limit.
+    description: Bypass volume limits
     default: op
   leafwe.bypass.protection:
-    description: Permission to bypass protections like WorldGuard and Towny.
+    description: Bypass WorldGuard/SuperiorSkyblock protection
     default: op

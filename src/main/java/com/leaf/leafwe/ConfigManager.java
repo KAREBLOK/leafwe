@@ -39,20 +39,25 @@ public class ConfigManager {
     private void loadMessages() {
         String lang = config.getString("settings.language", "en").toLowerCase();
         File langFile = new File(plugin.getDataFolder(), "messages_" + lang + ".yml");
+
         if (!langFile.exists()) {
             plugin.saveResource("messages_" + lang + ".yml", false);
         }
+
         if (!langFile.exists()) {
             plugin.getLogger().warning("Unsupported language '" + lang + "' selected. Falling back to English.");
             lang = "en";
             langFile = new File(plugin.getDataFolder(), "messages_en.yml");
             if (!langFile.exists()) plugin.saveResource("messages_en.yml", false);
         }
+
         messages = YamlConfiguration.loadConfiguration(langFile);
         InputStream defaultStream = plugin.getResource("messages_" + lang + ".yml");
         if (defaultStream == null) defaultStream = plugin.getResource("messages_en.yml");
+
         if (defaultStream != null) {
-            messages.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(defaultStream, StandardCharsets.UTF_8)));
+            messages.setDefaults(YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(defaultStream, StandardCharsets.UTF_8)));
         }
     }
 
@@ -62,7 +67,7 @@ public class ConfigManager {
     }
 
     public List<Component> getMessageAsComponentList(String path) {
-        List<String> stringList = config.getStringList("replace-gui." + path);
+        List<String> stringList = messages.getStringList("replace-gui." + path);
         if (stringList == null || stringList.isEmpty()) {
             return Collections.singletonList(Component.text(""));
         }
@@ -71,79 +76,166 @@ public class ConfigManager {
                 .collect(Collectors.toList());
     }
 
-    public int getSpeed() { return config.getInt("settings.speed", 2); }
-    public boolean isVisualizerEnabled() { return config.getBoolean("settings.selection-visualizer", true); }
-    public int getConfirmationLimit() { return config.getInt("settings.confirmation-limit", 5000); }
-    public int getMaxUndo() { return config.getInt("settings.max-undo", 10); }
-    public int getMaxVolume() { return config.getInt("settings.max-volume", 50000); }
+    public int getSpeed() {
+        int speed = config.getInt("settings.speed", 2);
+        return Math.max(1, Math.min(20, speed));
+    }
+
+    public boolean isVisualizerEnabled() {
+        return config.getBoolean("settings.selection-visualizer", true);
+    }
+
+    public int getConfirmationLimit() {
+        return Math.max(1, config.getInt("settings.confirmation-limit", 5000));
+    }
+
+    public int getMaxUndo() {
+        return Math.max(1, config.getInt("settings.max-undo", 10));
+    }
+
+    public int getMaxVolume() {
+        return Math.max(1, config.getInt("settings.max-volume", 50000));
+    }
+
     public Particle getPlacementParticle() {
         try {
             String particleName = config.getString("settings.placement-particle", "WAX_ON").toUpperCase();
             if (particleName.equalsIgnoreCase("NONE")) return null;
             return Particle.valueOf(particleName);
-        } catch (IllegalArgumentException e) { return Particle.WAX_ON; }
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid particle name: " + config.getString("settings.placement-particle") + ". Using default WAX_ON.");
+            return Particle.WAX_ON;
+        }
     }
-    public boolean isPipetteToolEnabled() { return config.getBoolean("settings.pipette-tool.enabled", true); }
 
-    public boolean isSuccessEffectEnabled() { return config.getBoolean("settings.success-effect.enabled", true); }
+    public boolean isPipetteToolEnabled() {
+        return config.getBoolean("settings.pipette-tool.enabled", true);
+    }
+
+    public boolean isSuccessEffectEnabled() {
+        return config.getBoolean("settings.success-effect.enabled", true);
+    }
+
     public Sound getSuccessSound() {
         try {
-            return Sound.valueOf(config.getString("settings.success-effect.sound", "ENTITY_PLAYER_LEVELUP").toUpperCase());
-        } catch (IllegalArgumentException e) { return Sound.ENTITY_PLAYER_LEVELUP; }
+            String soundName = config.getString("settings.success-effect.sound", "ENTITY_PLAYER_LEVELUP").toUpperCase();
+            return Sound.valueOf(soundName);
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid success sound: " + config.getString("settings.success-effect.sound") + ". Using default.");
+            return Sound.ENTITY_PLAYER_LEVELUP;
+        }
     }
 
     public Sound getPipetteCopySound() {
         try {
-            return Sound.valueOf(config.getString("settings.pipette-tool.copy-sound", "ENTITY_ITEM_PICKUP").toUpperCase());
-        } catch (IllegalArgumentException e) { return Sound.ENTITY_ITEM_PICKUP; }
+            String soundName = config.getString("settings.pipette-tool.copy-sound", "ENTITY_ITEM_PICKUP").toUpperCase();
+            return Sound.valueOf(soundName);
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid pipette copy sound: " + config.getString("settings.pipette-tool.copy-sound") + ". Using default.");
+            return Sound.ENTITY_ITEM_PICKUP;
+        }
     }
+
     public Sound getPipettePasteSound() {
         try {
-            return Sound.valueOf(config.getString("settings.pipette-tool.paste-sound", "BLOCK_NOTE_BLOCK_PLING").toUpperCase());
-        } catch (IllegalArgumentException e) { return Sound.BLOCK_NOTE_BLOCK_PLING; }
+            String soundName = config.getString("settings.pipette-tool.paste-sound", "BLOCK_NOTE_BLOCK_PLING").toUpperCase();
+            return Sound.valueOf(soundName);
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid pipette paste sound: " + config.getString("settings.pipette-tool.paste-sound") + ". Using default.");
+            return Sound.BLOCK_NOTE_BLOCK_PLING;
+        }
     }
 
     public Material getWandMaterial() {
         try {
-            return Material.valueOf(config.getString("wand-tool.material", "BLAZE_ROD").toUpperCase());
-        } catch (IllegalArgumentException e) { return Material.BLAZE_ROD; }
+            String materialName = config.getString("wand-tool.material", "BLAZE_ROD").toUpperCase();
+            return Material.valueOf(materialName);
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid wand material: " + config.getString("wand-tool.material") + ". Using default BLAZE_ROD.");
+            return Material.BLAZE_ROD;
+        }
     }
+
     public Component getWandName() {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(config.getString("wand-tool.name", "&6Construction Rod"));
+        String name = config.getString("wand-tool.name", "&6Construction Rod");
+        return LegacyComponentSerializer.legacyAmpersand().deserialize(name);
     }
+
     public List<Component> getWandLore() {
-        return config.getStringList("wand-tool.lore").stream()
+        List<String> loreStrings = config.getStringList("wand-tool.lore");
+        return loreStrings.stream()
                 .map(line -> LegacyComponentSerializer.legacyAmpersand().deserialize(line))
                 .collect(Collectors.toList());
     }
 
-    public boolean isWorkerAnimationEnabled() { return config.getBoolean("settings.worker-animation.enabled", true); }
-    public boolean shouldShowWorkerName() { return config.getBoolean("settings.worker-animation.show-name", true); }
-    public String getWorkerNameTemplate() { return config.getString("settings.worker-animation.name-template", "&a[Worker] %player%"); }
-    public double getWorkerYOffset() { return config.getDouble("settings.worker-animation.y-offset", 0.5); }
+    public boolean isWorkerAnimationEnabled() {
+        return config.getBoolean("settings.worker-animation.enabled", true);
+    }
+
+    public boolean shouldShowWorkerName() {
+        return config.getBoolean("settings.worker-animation.show-name", true);
+    }
+
+    public String getWorkerNameTemplate() {
+        return config.getString("settings.worker-animation.name-template", "&a[Worker] %player%");
+    }
+
+    public double getWorkerYOffset() {
+        return config.getDouble("settings.worker-animation.y-offset", 0.5);
+    }
+
     public Color getWorkerArmorColor() {
-        String[] rgb = config.getString("settings.worker-animation.armor-color", "0,255,255").replace(" ", "").split(",");
+        String colorString = config.getString("settings.worker-animation.armor-color", "0,255,255");
+        String[] rgb = colorString.replace(" ", "").split(",");
+
+        if (rgb.length != 3) {
+            plugin.getLogger().warning("Invalid armor color format: " + colorString + ". Using default aqua.");
+            return Color.AQUA;
+        }
+
         try {
-            return Color.fromRGB(Integer.parseInt(rgb[0]), Integer.parseInt(rgb[1]), Integer.parseInt(rgb[2]));
-        } catch (Exception e) { return Color.AQUA; }
+            int r = Integer.parseInt(rgb[0]);
+            int g = Integer.parseInt(rgb[1]);
+            int b = Integer.parseInt(rgb[2]);
+
+            if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+                plugin.getLogger().warning("RGB values must be between 0-255. Using default aqua color.");
+                return Color.AQUA;
+            }
+
+            return Color.fromRGB(r, g, b);
+        } catch (NumberFormatException e) {
+            plugin.getLogger().warning("Invalid RGB values in armor color: " + colorString + ". Using default aqua.");
+            return Color.AQUA;
+        }
     }
 
     public Component getBlockPickerGuiTitle() {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(config.getString("block-selector-gui.title", "&1Select a Block"));
+        String title = config.getString("block-selector-gui.title", "&1Select a Block");
+        return LegacyComponentSerializer.legacyAmpersand().deserialize(title);
     }
+
     public Component getReplaceGuiTitle() {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(config.getString("replace-gui.title", "&1Block Replace Menu"));
+        String title = config.getString("replace-gui.title", "&1Block Replace Menu");
+        return LegacyComponentSerializer.legacyAmpersand().deserialize(title);
     }
+
     public Component getReplaceGuiConfirmButtonName() {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(config.getString("replace-gui.confirm-button-name", "&a&lCONFIRM & REPLACE"));
+        String name = config.getString("replace-gui.confirm-button-name", "&a&lCONFIRM & REPLACE");
+        return LegacyComponentSerializer.legacyAmpersand().deserialize(name);
     }
+
     public List<Component> getReplaceGuiConfirmButtonLore() {
-        return config.getStringList("replace-gui.confirm-button-lore").stream()
+        List<String> loreStrings = config.getStringList("replace-gui.confirm-button-lore");
+        return loreStrings.stream()
                 .map(line -> LegacyComponentSerializer.legacyAmpersand().deserialize(line))
                 .collect(Collectors.toList());
     }
 
-    public Set<String> getDisabledWorlds() { return new HashSet<>(config.getStringList("disabled-worlds")); }
+    public Set<String> getDisabledWorlds() {
+        return new HashSet<>(config.getStringList("disabled-worlds"));
+    }
+
     public Set<Material> getBlockedMaterials() {
         return config.getStringList("blocked-materials").stream()
                 .map(Material::matchMaterial)

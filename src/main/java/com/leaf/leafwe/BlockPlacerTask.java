@@ -26,6 +26,7 @@ public class BlockPlacerTask extends BukkitRunnable {
     private final BlockstateManager blockstateManager;
     private int blocksPlaced = 0;
     private ArmorStand worker = null;
+    private boolean isRunning = true;
 
     public BlockPlacerTask(Player player, List<Location> locations, Material material, ConfigManager configManager, SelectionVisualizer visualizer, TaskManager taskManager, BlockstateManager blockstateManager) {
         this.player = player;
@@ -39,18 +40,10 @@ public class BlockPlacerTask extends BukkitRunnable {
 
     @Override
     public void run() {
+        if (!isRunning) return;
+
         if (locationsToFill.isEmpty() || !player.getInventory().contains(material)) {
-            if (worker != null) {
-                worker.remove();
-            }
-            taskManager.finishTask(player);
-            selectionVisualizer.playSuccessEffect(player);
-            if (!locationsToFill.isEmpty()) {
-                player.sendMessage(configManager.getMessage("inventory-ran-out").replaceText(config -> config.matchLiteral("%block%").replacement(material.name())));
-                player.sendMessage(configManager.getMessage("process-incomplete").replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(locationsToFill.size()))));
-            }
-            player.sendMessage(configManager.getMessage("process-complete").replaceText(config -> config.matchLiteral("%placed%").replacement(String.valueOf(blocksPlaced))));
-            this.cancel();
+            finishTask();
             return;
         }
 
@@ -60,7 +53,7 @@ public class BlockPlacerTask extends BukkitRunnable {
             spawnWorker(currentLocation);
         }
 
-        if (worker != null) {
+        if (worker != null && !worker.isDead()) {
             Location workerLocation = currentLocation.clone().add(0.5, configManager.getWorkerYOffset(), 0.5);
             worker.teleport(workerLocation);
             worker.swingMainHand();
@@ -82,52 +75,99 @@ public class BlockPlacerTask extends BukkitRunnable {
         }
     }
 
+    private void finishTask() {
+        isRunning = false;
+        cleanupWorker();
+        taskManager.finishTask(player);
+        selectionVisualizer.playSuccessEffect(player);
+
+        if (!locationsToFill.isEmpty()) {
+            player.sendMessage(configManager.getMessage("inventory-ran-out")
+                    .replaceText(config -> config.matchLiteral("%block%").replacement(material.name())));
+            player.sendMessage(configManager.getMessage("process-incomplete")
+                    .replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(locationsToFill.size()))));
+        }
+
+        player.sendMessage(configManager.getMessage("process-complete")
+                .replaceText(config -> config.matchLiteral("%placed%").replacement(String.valueOf(blocksPlaced))));
+
+        this.cancel();
+    }
+
+    private void cleanupWorker() {
+        if (worker != null && !worker.isDead()) {
+            worker.remove();
+            worker = null;
+        }
+    }
+
+    @Override
+    public synchronized void cancel() throws IllegalStateException {
+        isRunning = false;
+        cleanupWorker();
+        super.cancel();
+    }
+
     private void spawnWorker(Location location) {
-        Location spawnLocation = location.clone().add(0.5, configManager.getWorkerYOffset(), 0.5);
-        this.worker = (ArmorStand) location.getWorld().spawnEntity(spawnLocation, EntityType.ARMOR_STAND);
+        try {
+            Location spawnLocation = location.clone().add(0.5, configManager.getWorkerYOffset(), 0.5);
+            this.worker = (ArmorStand) location.getWorld().spawnEntity(spawnLocation, EntityType.ARMOR_STAND);
 
-        worker.setGravity(false);
-        worker.setCanPickupItems(false);
-        worker.setInvulnerable(true);
-        worker.setArms(true);
-        worker.setBasePlate(false);
-        worker.setSmall(true);
-        worker.setHeadPose(new EulerAngle(Math.toRadians(25), 0, 0));
+            worker.setGravity(false);
+            worker.setCanPickupItems(false);
+            worker.setInvulnerable(true);
+            worker.setArms(true);
+            worker.setBasePlate(false);
+            worker.setSmall(true);
+            worker.setHeadPose(new EulerAngle(Math.toRadians(25), 0, 0));
 
-        if (configManager.shouldShowWorkerName()) {
-            String name = configManager.getWorkerNameTemplate().replace("%player%", player.getName());
-            worker.customName(LegacyComponentSerializer.legacyAmpersand().deserialize(name));
-            worker.setCustomNameVisible(true);
+            if (configManager.shouldShowWorkerName()) {
+                String name = configManager.getWorkerNameTemplate().replace("%player%", player.getName());
+                worker.customName(LegacyComponentSerializer.legacyAmpersand().deserialize(name));
+                worker.setCustomNameVisible(true);
+            }
+
+            ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD, 1);
+            SkullMeta skullMeta = (SkullMeta) playerHead.getItemMeta();
+            if (skullMeta != null) {
+                skullMeta.setOwningPlayer(player);
+                playerHead.setItemMeta(skullMeta);
+                worker.getEquipment().setHelmet(playerHead);
+            }
+
+            worker.getEquipment().setItemInMainHand(new ItemStack(this.material, 1));
+
+            Color armorColor = configManager.getWorkerArmorColor();
+            setColoredArmorPiece(worker, Material.LEATHER_CHESTPLATE, armorColor, "chestplate");
+            setColoredArmorPiece(worker, Material.LEATHER_LEGGINGS, armorColor, "leggings");
+            setColoredArmorPiece(worker, Material.LEATHER_BOOTS, armorColor, "boots");
+
+        } catch (Exception e) {
+            worker = null;
         }
+    }
 
-        ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD, 1);
-        SkullMeta skullMeta = (SkullMeta) playerHead.getItemMeta();
-        if (skullMeta != null) {
-            skullMeta.setOwningPlayer(player);
-            playerHead.setItemMeta(skullMeta);
-            worker.getEquipment().setHelmet(playerHead);
+    private void setColoredArmorPiece(ArmorStand armorStand, Material material, Color color, String piece) {
+        try {
+            ItemStack armor = new ItemStack(material, 1);
+            LeatherArmorMeta meta = (LeatherArmorMeta) armor.getItemMeta();
+            if (meta != null) {
+                meta.setColor(color);
+                armor.setItemMeta(meta);
+
+                switch (piece) {
+                    case "chestplate":
+                        armorStand.getEquipment().setChestplate(armor);
+                        break;
+                    case "leggings":
+                        armorStand.getEquipment().setLeggings(armor);
+                        break;
+                    case "boots":
+                        armorStand.getEquipment().setBoots(armor);
+                        break;
+                }
+            }
+        } catch (Exception e) {
         }
-
-        worker.getEquipment().setItemInMainHand(new ItemStack(this.material, 1));
-
-        Color armorColor = configManager.getWorkerArmorColor();
-        ItemStack chestplate = new ItemStack(Material.LEATHER_CHESTPLATE, 1);
-        LeatherArmorMeta chestMeta = (LeatherArmorMeta) chestplate.getItemMeta();
-        chestMeta.setColor(armorColor);
-        chestplate.setItemMeta(chestMeta);
-
-        ItemStack leggings = new ItemStack(Material.LEATHER_LEGGINGS, 1);
-        LeatherArmorMeta legMeta = (LeatherArmorMeta) leggings.getItemMeta();
-        legMeta.setColor(armorColor);
-        leggings.setItemMeta(legMeta);
-
-        ItemStack boots = new ItemStack(Material.LEATHER_BOOTS, 1);
-        LeatherArmorMeta bootMeta = (LeatherArmorMeta) boots.getItemMeta();
-        bootMeta.setColor(armorColor);
-        boots.setItemMeta(bootMeta);
-
-        worker.getEquipment().setChestplate(chestplate);
-        worker.getEquipment().setLeggings(leggings);
-        worker.getEquipment().setBoots(boots);
     }
 }

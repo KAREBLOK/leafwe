@@ -15,7 +15,8 @@ public class LWECommand implements CommandExecutor {
     private final PendingCommandManager pendingCommandManager;
     private final BlockstateManager blockstateManager;
 
-    public LWECommand(LeafWE plugin, ConfigManager configManager, UndoManager undoManager, PendingCommandManager pendingManager, BlockstateManager blockstateManager) {
+    public LWECommand(LeafWE plugin, ConfigManager configManager, UndoManager undoManager,
+                      PendingCommandManager pendingManager, BlockstateManager blockstateManager) {
         this.configManager = configManager;
         this.undoManager = undoManager;
         this.pendingCommandManager = pendingManager;
@@ -28,54 +29,123 @@ public class LWECommand implements CommandExecutor {
             sender.sendMessage(configManager.getMessage("help-message"));
             return true;
         }
-        switch (args[0].toLowerCase()) {
+
+        String subCommand = args[0].toLowerCase();
+
+        switch (subCommand) {
             case "reload":
-                if (!sender.hasPermission("leafwe.reload")) { sender.sendMessage(configManager.getMessage("no-permission")); return true; }
-                configManager.loadConfig();
-                sender.sendMessage(configManager.getMessage("reload-successful"));
-                break;
+                return handleReload(sender);
             case "give":
-                if (!sender.hasPermission("leafwe.give")) { sender.sendMessage(configManager.getMessage("no-permission")); return true; }
-                if (args.length != 2) { sender.sendMessage(configManager.getMessage("invalid-usage-give")); return true; }
-                Player target = Bukkit.getPlayerExact(args[1]);
-                if (target == null) {
-                    sender.sendMessage(configManager.getMessage("player-not-found").replaceText(config -> config.matchLiteral("%player%").replacement(args[1])));
-                    return true;
-                }
-                ItemStack wand = new ItemStack(configManager.getWandMaterial(), 1);
-                ItemMeta meta = wand.getItemMeta();
-                if (meta != null) {
-                    meta.displayName(configManager.getWandName());
-                    meta.lore(configManager.getWandLore());
-                    wand.setItemMeta(meta);
-                }
-                target.getInventory().addItem(wand);
-                target.sendMessage(configManager.getMessage("wand-given-receiver"));
-                if (!sender.equals(target)) {
-                    sender.sendMessage(configManager.getMessage("wand-given-sender").replaceText(config -> config.matchLiteral("%player%").replacement(target.getName())));
-                }
-                break;
+                return handleGive(sender, args);
             case "undo":
-                if (!(sender instanceof Player player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
-                if (!player.hasPermission("leafwe.undo")) { player.sendMessage(configManager.getMessage("no-permission")); return true; }
-                if (!undoManager.undoLastChange(player)) {
-                    player.sendMessage(configManager.getMessage("no-undo"));
-                }
-                break;
+                return handleUndo(sender);
             case "confirm":
-                if (!(sender instanceof Player player)) { sender.sendMessage(configManager.getMessage("players-only")); return true; }
-                if (!player.hasPermission("leafwe.confirm")) { player.sendMessage(configManager.getMessage("no-permission")); return true; }
-                if (pendingCommandManager.confirm(player)) {
-                    player.sendMessage(configManager.getMessage("confirmation-successful"));
-                } else {
-                    player.sendMessage(configManager.getMessage("no-pending-confirmation"));
-                }
-                break;
+                return handleConfirm(sender);
             case "help":
             default:
                 sender.sendMessage(configManager.getMessage("help-message"));
-                break;
+                return true;
+        }
+    }
+
+    private boolean handleReload(CommandSender sender) {
+        if (!sender.hasPermission("leafwe.reload")) {
+            sender.sendMessage(configManager.getMessage("no-permission"));
+            return true;
+        }
+
+        try {
+            configManager.loadConfig();
+            sender.sendMessage(configManager.getMessage("reload-successful"));
+        } catch (Exception e) {
+            sender.sendMessage(Component.text("§cReload failed: " + e.getMessage()));
         }
         return true;
+    }
+
+    private boolean handleGive(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("leafwe.give")) {
+            sender.sendMessage(configManager.getMessage("no-permission"));
+            return true;
+        }
+
+        if (args.length != 2) {
+            sender.sendMessage(configManager.getMessage("invalid-usage-give"));
+            return true;
+        }
+
+        String targetName = args[1].trim();
+        if (targetName.isEmpty()) {
+            sender.sendMessage(configManager.getMessage("invalid-usage-give"));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayerExact(targetName);
+        if (target == null || !target.isOnline()) {
+            sender.sendMessage(configManager.getMessage("player-not-found")
+                    .replaceText(config -> config.matchLiteral("%player%").replacement(targetName)));
+            return true;
+        }
+
+        ItemStack wand = createWand();
+        if (target.getInventory().firstEmpty() == -1) {
+            target.getWorld().dropItem(target.getLocation(), wand);
+        } else {
+            target.getInventory().addItem(wand);
+        }
+
+        target.sendMessage(configManager.getMessage("wand-given-receiver"));
+        if (!sender.equals(target)) {
+            sender.sendMessage(configManager.getMessage("wand-given-sender")
+                    .replaceText(config -> config.matchLiteral("%player%").replacement(target.getName())));
+        }
+        return true;
+    }
+
+    private boolean handleUndo(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(configManager.getMessage("players-only"));
+            return true;
+        }
+
+        if (!player.hasPermission("leafwe.undo")) {
+            player.sendMessage(configManager.getMessage("no-permission"));
+            return true;
+        }
+
+        if (!undoManager.undoLastChange(player)) {
+            player.sendMessage(configManager.getMessage("no-undo"));
+        }
+        return true;
+    }
+
+    private boolean handleConfirm(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(configManager.getMessage("players-only"));
+            return true;
+        }
+
+        if (!player.hasPermission("leafwe.confirm")) {
+            player.sendMessage(configManager.getMessage("no-permission"));
+            return true;
+        }
+
+        if (pendingCommandManager.confirm(player)) {
+            player.sendMessage(configManager.getMessage("confirmation-successful"));
+        } else {
+            player.sendMessage(configManager.getMessage("no-pending-confirmation"));
+        }
+        return true;
+    }
+
+    private ItemStack createWand() {
+        ItemStack wand = new ItemStack(configManager.getWandMaterial(), 1);
+        ItemMeta meta = wand.getItemMeta();
+        if (meta != null) {
+            meta.displayName(configManager.getWandName());
+            meta.lore(configManager.getWandLore());
+            wand.setItemMeta(meta);
+        }
+        return wand;
     }
 }

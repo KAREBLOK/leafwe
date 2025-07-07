@@ -2,8 +2,10 @@ package com.leaf.leafwe;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerKickEvent;
 
 public class PlayerListener implements Listener {
     private final SelectionManager selectionManager;
@@ -13,7 +15,9 @@ public class PlayerListener implements Listener {
     private final TaskManager taskManager;
     private final BlockstateManager blockstateManager;
 
-    public PlayerListener(SelectionManager selectionManager, UndoManager undoManager, PendingCommandManager pendingCommandManager, SelectionVisualizer selectionVisualizer, TaskManager taskManager, BlockstateManager blockstateManager) {
+    public PlayerListener(SelectionManager selectionManager, UndoManager undoManager,
+                          PendingCommandManager pendingCommandManager, SelectionVisualizer selectionVisualizer,
+                          TaskManager taskManager, BlockstateManager blockstateManager) {
         this.selectionManager = selectionManager;
         this.undoManager = undoManager;
         this.pendingCommandManager = pendingCommandManager;
@@ -22,14 +26,34 @@ public class PlayerListener implements Listener {
         this.blockstateManager = blockstateManager;
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-        selectionManager.clearSelection(player);
-        undoManager.clearHistory(player);
-        pendingCommandManager.clear(player);
-        selectionVisualizer.stop(player);
-        taskManager.finishTask(player);
-        blockstateManager.clearCopiedBlockstate(player);
+        cleanupPlayer(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerKick(PlayerKickEvent event) {
+        cleanupPlayer(event.getPlayer());
+    }
+
+    private void cleanupPlayer(Player player) {
+        if (player == null) return;
+
+        try {
+            selectionManager.clearSelection(player);
+
+            undoManager.clearHistory(player);
+
+            pendingCommandManager.clear(player);
+
+            selectionVisualizer.stop(player);
+
+            taskManager.finishTask(player);
+
+            blockstateManager.clearCopiedBlockstate(player);
+
+        } catch (Exception e) {
+            System.err.println("Error cleaning up player " + player.getName() + ": " + e.getMessage());
+        }
     }
 }

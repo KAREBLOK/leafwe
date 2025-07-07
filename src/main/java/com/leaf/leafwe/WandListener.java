@@ -20,7 +20,8 @@ public class WandListener implements Listener {
     private final BlockstateManager blockstateManager;
     private final ProtectionManager protectionManager;
 
-    public WandListener(SelectionManager manager, ConfigManager configManager, SelectionVisualizer visualizer, BlockstateManager blockstateManager, ProtectionManager protectionManager) {
+    public WandListener(SelectionManager manager, ConfigManager configManager, SelectionVisualizer visualizer,
+                        BlockstateManager blockstateManager, ProtectionManager protectionManager) {
         this.selectionManager = manager;
         this.configManager = configManager;
         this.selectionVisualizer = visualizer;
@@ -31,41 +32,51 @@ public class WandListener implements Listener {
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        // Oyuncunun elindeki eşyanın bizim özel seçim çubuğumuz olup olmadığını kontrol et
-        if (isWand(event.getItem())) {
-            // Seçim çubuğu ile yapılan tüm varsayılan eylemleri iptal et (blok kırma, sandık açma vb.)
-            event.setCancelled(true);
+        ItemStack item = event.getItem();
 
-            Block clickedBlock = event.getClickedBlock();
+        if (!isWand(item)) {
+            return;
+        }
 
-            // Önce Pipet Aracı özelliğini kontrol et (eğilip sağ tıklama)
-            if (configManager.isPipetteToolEnabled() && player.isSneaking() && (event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR)) {
-                handlePipetteAction(player, clickedBlock);
-                return; // Pipet işlemi yapıldıysa, normal seçim işlemine devam etme
+        // Seçim çubuğu ile yapılan tüm varsayılan eylemleri iptal et
+        event.setCancelled(true);
+
+        Block clickedBlock = event.getClickedBlock();
+        Action action = event.getAction();
+
+        // Önce Pipet Aracı özelliğini kontrol et (eğilip sağ tıklama)
+        if (configManager.isPipetteToolEnabled() && player.isSneaking() &&
+                (action == Action.RIGHT_CLICK_BLOCK || action == Action.RIGHT_CLICK_AIR)) {
+            handlePipetteAction(player, clickedBlock);
+            return;
+        }
+
+        // Normal seçim işlemi (sol veya sağ tık)
+        if (clickedBlock != null && (action == Action.LEFT_CLICK_BLOCK || action == Action.RIGHT_CLICK_BLOCK)) {
+            Location loc = clickedBlock.getLocation();
+
+            // WorldGuard koruma kontrolü
+            if (!protectionManager.canBuild(player, loc)) {
+                player.sendMessage(configManager.getMessage("protection-no-permission"));
+                return;
             }
 
-            // Normal seçim işlemi (sol veya sağ tık)
-            if (clickedBlock != null) {
-                Location loc = clickedBlock.getLocation();
-
-                // WorldGuard KORUMA KONTROLÜ
-                // Seçim yapmadan hemen önce, oyuncunun bu bloğa dokunma izni var mı diye kontrol et
-                if (!protectionManager.canBuild(player, loc)) {
-                    player.sendMessage(configManager.getMessage("protection-no-permission"));
-                    return; // İzin yoksa, seçim yaptırma ve işlemi durdur
-                }
-
-                if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
-                    selectionManager.setPosition1(player, loc);
-                    player.sendMessage(configManager.getMessage("pos1-set"));
-                } else if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-                    selectionManager.setPosition2(player, loc);
-                    player.sendMessage(configManager.getMessage("pos2-set"));
-                }
-
-                // Her seçimden sonra partikül görselleştirmesini başlat/güncelle
-                selectionVisualizer.start(player);
+            if (action == Action.LEFT_CLICK_BLOCK) {
+                selectionManager.setPosition1(player, loc);
+                player.sendMessage(configManager.getMessage("pos1-set")
+                        .replaceText(config -> config.matchLiteral("%x%").replacement(String.valueOf(loc.getBlockX())))
+                        .replaceText(config -> config.matchLiteral("%y%").replacement(String.valueOf(loc.getBlockY())))
+                        .replaceText(config -> config.matchLiteral("%z%").replacement(String.valueOf(loc.getBlockZ()))));
+            } else {
+                selectionManager.setPosition2(player, loc);
+                player.sendMessage(configManager.getMessage("pos2-set")
+                        .replaceText(config -> config.matchLiteral("%x%").replacement(String.valueOf(loc.getBlockX())))
+                        .replaceText(config -> config.matchLiteral("%y%").replacement(String.valueOf(loc.getBlockY())))
+                        .replaceText(config -> config.matchLiteral("%z%").replacement(String.valueOf(loc.getBlockZ()))));
             }
+
+            // Her seçimden sonra partikül görselleştirmesini başlat/güncelle
+            selectionVisualizer.start(player);
         }
     }
 
@@ -75,27 +86,40 @@ public class WandListener implements Listener {
             if (blockstateManager.getCopiedBlockstate(player) != null) {
                 blockstateManager.clearCopiedBlockstate(player);
                 player.sendActionBar(configManager.getMessage("blockstate-cleared"));
+                player.playSound(player.getLocation(), configManager.getPipetteCopySound(), 0.5f, 0.8f);
             }
             return;
         }
 
         // Bir bloğa tıklarsa, verisini kopyala
-        blockstateManager.setCopiedBlockstate(player, clickedBlock.getBlockData());
-        player.playSound(player.getLocation(), configManager.getPipetteCopySound(), 1.0f, 1.2f);
-        Component message = configManager.getMessage("blockstate-copied")
-                .replaceText(config -> config.matchLiteral("%block%").replacement(clickedBlock.getType().name().toLowerCase().replace('_', ' ')));
-        player.sendActionBar(message);
+        try {
+            blockstateManager.setCopiedBlockstate(player, clickedBlock.getBlockData());
+            player.playSound(player.getLocation(), configManager.getPipetteCopySound(), 1.0f, 1.2f);
+
+            String blockName = clickedBlock.getType().name().toLowerCase().replace('_', ' ');
+            Component message = configManager.getMessage("blockstate-copied")
+                    .replaceText(config -> config.matchLiteral("%block%").replacement(blockName));
+            player.sendActionBar(message);
+        } catch (Exception e) {
+            player.sendActionBar(Component.text("§cFailed to copy block data."));
+        }
     }
 
     private boolean isWand(ItemStack item) {
         if (item == null || item.getType() != configManager.getWandMaterial()) {
             return false;
         }
+
         ItemMeta meta = item.getItemMeta();
         if (meta == null || !meta.hasDisplayName() || !meta.hasLore()) {
             return false;
         }
-        return Objects.equals(meta.displayName(), configManager.getWandName()) &&
-                Objects.equals(meta.lore(), configManager.getWandLore());
+
+        try {
+            return Objects.equals(meta.displayName(), configManager.getWandName()) &&
+                    Objects.equals(meta.lore(), configManager.getWandLore());
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

@@ -17,6 +17,8 @@ public class UndoTask extends BukkitRunnable {
     private final List<Map.Entry<Location, BlockData>> changes;
     private final ConfigManager configManager;
     private int refundedItems = 0;
+    private int blocksRestored = 0;
+    private boolean isRunning = true;
 
     public UndoTask(Player player, Map<Location, BlockData> changeMap, ConfigManager configManager) {
         this.player = player;
@@ -26,33 +28,88 @@ public class UndoTask extends BukkitRunnable {
 
     @Override
     public void run() {
+        if (!isRunning || !player.isOnline()) {
+            finishTask();
+            return;
+        }
+
         if (changes.isEmpty()) {
-            if (refundedItems > 0) {
-                player.sendMessage(configManager.getMessage("undo-successful-with-refund")
-                        .replaceText(config -> config.matchLiteral("%count%").replacement(String.valueOf(refundedItems))));
-            } else {
-                player.sendMessage(configManager.getMessage("undo-successful"));
-            }
-            this.cancel();
+            finishTask();
             return;
         }
 
         int blocksToRestore = 0;
-        while (blocksToRestore < 2000 && !changes.isEmpty()) {
-            Map.Entry<Location, BlockData> entry = changes.remove(0);
-            Location location = entry.getKey();
-            BlockData oldBlockData = entry.getValue();
+        int maxBlocksPerTick = 2000;
 
-            Block currentBlock = location.getBlock();
-            Material newMaterial = currentBlock.getType();
+        while (blocksToRestore < maxBlocksPerTick && !changes.isEmpty()) {
+            try {
+                Map.Entry<Location, BlockData> entry = changes.remove(0);
+                Location location = entry.getKey();
+                BlockData oldBlockData = entry.getValue();
 
-            if (newMaterial != oldBlockData.getMaterial() && newMaterial != Material.AIR) {
-                player.getInventory().addItem(new ItemStack(newMaterial, 1));
-                refundedItems++;
+                if (location == null || oldBlockData == null) {
+                    continue;
+                }
+
+                Block currentBlock = location.getBlock();
+                if (currentBlock == null) {
+                    continue;
+                }
+
+                Material newMaterial = currentBlock.getType();
+
+                if (newMaterial != oldBlockData.getMaterial() && newMaterial != Material.AIR) {
+                    try {
+                        ItemStack refundItem = new ItemStack(newMaterial, 1);
+
+                        if (player.getInventory().firstEmpty() != -1) {
+                            player.getInventory().addItem(refundItem);
+                        } else {
+                            player.getWorld().dropItem(player.getLocation(), refundItem);
+                        }
+                        refundedItems++;
+                    } catch (Exception e) {
+                    }
+                }
+
+                try {
+                    currentBlock.setBlockData(oldBlockData, false);
+                    blocksRestored++;
+                } catch (Exception e) {
+                    System.err.println("Failed to restore block at " + location + ": " + e.getMessage());
+                }
+
+                blocksToRestore++;
+
+            } catch (Exception e) {
+                System.err.println("Error processing undo entry: " + e.getMessage());
             }
-
-            currentBlock.setBlockData(oldBlockData, false);
-            blocksToRestore++;
         }
+    }
+
+    private void finishTask() {
+        isRunning = false;
+
+        try {
+            if (player.isOnline()) {
+                if (refundedItems > 0) {
+                    player.sendMessage(configManager.getMessage("undo-successful-with-refund")
+                            .replaceText(config -> config.matchLiteral("%count%").replacement(String.valueOf(refundedItems)))
+                            .replaceText(config -> config.matchLiteral("%blocks%").replacement(String.valueOf(blocksRestored))));
+                } else {
+                    player.sendMessage(configManager.getMessage("undo-successful")
+                            .replaceText(config -> config.matchLiteral("%blocks%").replacement(String.valueOf(blocksRestored))));
+                }
+            }
+        } catch (Exception e) {
+        }
+
+        this.cancel();
+    }
+
+    @Override
+    public synchronized void cancel() throws IllegalStateException {
+        isRunning = false;
+        super.cancel();
     }
 }
