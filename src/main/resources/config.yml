@@ -1,4 +1,4 @@
-# LeafWE Plugin Settings v4.0.0
+# LeafWE Plugin Settings v4.0.3
 
 # General settings for plugin behavior.
 settings:
@@ -29,7 +29,6 @@ settings:
     copy-sound: 'ENTITY_ITEM_PICKUP'
     paste-sound: 'BLOCK_NOTE_BLOCK_PLING'
 
-  # --- EKSİK OLAN VE YENİDEN EKLENEN BÖLÜM ---
   # Settings for the worker Armor Stand animation.
   worker-animation:
     enabled: true
@@ -73,3 +72,30 @@ replace-gui:
   confirm-button-lore:
     - '&7Replaces the block in the left slot'
     - '&7with the block in the right slot.'
+
+# Daily Limits System
+daily-limits:
+  enabled: false  # Set to true to enable daily limits
+  reset-time: "00:00"  # Daily reset time (24-hour format)
+  groups:
+    default:
+      max-blocks-per-day: 1000      # Maximum blocks per day
+      max-operations-per-day: 10    # Maximum operations per day
+    vip:
+      max-blocks-per-day: 5000
+      max-operations-per-day: 50
+    premium:
+      max-blocks-per-day: 15000
+      max-operations-per-day: 100
+    admin:
+      max-blocks-per-day: -1        # -1 = unlimited
+      max-operations-per-day: -1    # -1 = unlimited
+
+# Permission Groups:
+# leafwe.limit.group.default  - Default group (everyone has this)
+# leafwe.limit.group.vip      - VIP group
+# leafwe.limit.group.premium  - Premium group
+# leafwe.limit.group.admin    - Admin group (unlimited)
+
+# Players automatically get the highest permission group they have
+# Example: If player has both "vip" and "premium" permissions, they get "premium" limits

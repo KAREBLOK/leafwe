@@ -242,4 +242,80 @@ public class ConfigManager {
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toSet());
     }
+
+    public Component getProgressOperationPlacing() {
+        return getMessage("progress-operation-placing");
+    }
+
+    public Component getProgressOperationReplacing() {
+        return getMessage("progress-operation-replacing");
+    }
+
+    public Component getProgressOperationBlockPlacement() {
+        return getMessage("progress-operation-block-placement");
+    }
+
+    public Component getProgressOperationBlockReplacement() {
+        return getMessage("progress-operation-block-replacement");
+    }
+
+    public Component getProgressErrorInventory() {
+        return getMessage("progress-error-inventory");
+    }
+
+    public Component getProgressCompleted() {
+        return getMessage("progress-completed");
+    }
+
+    public Component getProgressCancelled() {
+        return getMessage("progress-cancelled");
+    }
+
+    public boolean isDailyLimitsEnabled() {
+        return config.getBoolean("daily-limits.enabled", false);
+    }
+
+    public String getDailyLimitResetTime() {
+        return config.getString("daily-limits.reset-time", "00:00");
+    }
+
+    public Component getDailyLimitBlocksExceeded() {
+        return getMessage("daily-limit-blocks-exceeded");
+    }
+
+    public Component getDailyLimitOperationsExceeded() {
+        return getMessage("daily-limit-operations-exceeded");
+    }
+
+    public Component getDailyLimitsDisabled() {
+        return getMessage("daily-limits-disabled");
+    }
+
+    public Component getDailyLimitsHeader() {
+        return getMessage("daily-limits-header");
+    }
+
+    public Component getDailyLimitsGroup() {
+        return getMessage("daily-limits-group");
+    }
+
+    public Component getDailyLimitsBlocks() {
+        return getMessage("daily-limits-blocks");
+    }
+
+    public Component getDailyLimitsOperations() {
+        return getMessage("daily-limits-operations");
+    }
+
+    public Component getDailyLimitsBlocksUnlimited() {
+        return getMessage("daily-limits-blocks-unlimited");
+    }
+
+    public Component getDailyLimitsOperationsUnlimited() {
+        return getMessage("daily-limits-operations-unlimited");
+    }
+
+    public FileConfiguration getConfig() {
+        return config;
+    }
 }

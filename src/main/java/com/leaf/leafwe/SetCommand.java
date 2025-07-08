@@ -118,6 +118,23 @@ public class SetCommand implements CommandExecutor {
 
         long volume = selectionManager.getVolume(player);
 
+        DailyLimitManager dailyLimitManager = plugin.getDailyLimitManager();
+        if (dailyLimitManager != null && !dailyLimitManager.canPerformOperation(player, (int) volume)) {
+            DailyLimitManager.DailyUsageInfo usageInfo = dailyLimitManager.getUsageInfo(player);
+            if (usageInfo.maxBlocks != -1) {
+                player.sendMessage(configManager.getDailyLimitBlocksExceeded()
+                        .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedBlocks)))
+                        .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxBlocks)))
+                        .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
+            } else {
+                player.sendMessage(configManager.getDailyLimitOperationsExceeded()
+                        .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedOperations)))
+                        .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxOperations)))
+                        .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
+            }
+            return true;
+        }
+
         if (!player.hasPermission("leafwe.bypass.limit") && volume > configManager.getMaxVolume()) {
             player.sendMessage(configManager.getMessage("volume-limit-exceeded")
                     .replaceText(config -> config.matchLiteral("%limit%").replacement(String.valueOf(configManager.getMaxVolume()))));
@@ -158,7 +175,7 @@ public class SetCommand implements CommandExecutor {
                 guiManager.setLastReplacedFrom(player, finalBlockType);
                 player.sendMessage(configManager.getMessage("process-starting"));
 
-                BlockPlacerTask task = new BlockPlacerTask(player, locationsToFill, finalBlockType,
+                BlockPlacerTask task = new BlockPlacerTask(plugin, player, locationsToFill, finalBlockType,
                         configManager, selectionVisualizer, taskManager, blockstateManager);
                 task.runTaskTimer(plugin, 2L, configManager.getSpeed());
                 taskManager.startTask(player, task);

@@ -164,7 +164,7 @@ public class WallCommand implements CommandExecutor {
                 guiManager.setLastReplacedFrom(player, finalBlockType);
                 player.sendMessage(configManager.getMessage("process-starting"));
 
-                BlockPlacerTask task = new BlockPlacerTask(player, locationsToFill, finalBlockType,
+                BlockPlacerTask task = new BlockPlacerTask(plugin, player, locationsToFill, finalBlockType,
                         configManager, selectionVisualizer, taskManager, blockstateManager);
                 task.runTaskTimer(plugin, 2L, configManager.getSpeed());
                 taskManager.startTask(player, task);

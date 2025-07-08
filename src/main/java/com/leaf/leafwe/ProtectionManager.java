@@ -8,6 +8,7 @@ public class ProtectionManager {
 
     private boolean worldGuardEnabled = false;
     private boolean superiorSkyblockEnabled = false;
+    private boolean townyEnabled = false;
     private final LeafWE plugin;
 
     public ProtectionManager(LeafWE plugin) {
@@ -65,7 +66,21 @@ public class ProtectionManager {
             plugin.getLogger().info("SuperiorSkyblock2 not found. Protection hook disabled.");
         }
 
-        plugin.getLogger().info("Protection Manager Status: WG=" + worldGuardEnabled + ", SSB=" + superiorSkyblockEnabled);
+        Plugin townyPlugin = plugin.getServer().getPluginManager().getPlugin("Towny");
+        if (townyPlugin != null && townyPlugin.isEnabled()) {
+            try {
+                Class.forName("com.palmergames.bukkit.towny.TownyAPI");
+                this.townyEnabled = true;
+                plugin.getLogger().info("Towny hook enabled successfully.");
+            } catch (ClassNotFoundException e) {
+                plugin.getLogger().warning("Towny found but API not available: " + e.getMessage());
+                this.townyEnabled = false;
+            }
+        } else {
+            plugin.getLogger().info("Towny not found. Protection hook disabled.");
+        }
+
+        plugin.getLogger().info("Protection Manager Status: WG=" + worldGuardEnabled + ", SSB=" + superiorSkyblockEnabled + ", Towny=" + townyEnabled);
     }
 
     public boolean canBuild(Player player, Location location) {
@@ -108,6 +123,19 @@ public class ProtectionManager {
                 }
             } catch (Exception e) {
                 plugin.getLogger().warning("Error checking SuperiorSkyblock permissions: " + e.getMessage());
+                return false;
+            }
+        }
+
+        if (townyEnabled) {
+            try {
+                boolean canBuild = checkTownyPermission(player, location);
+                if (!canBuild) {
+                    player.sendMessage("§c[LeafWE] Towny: Build permission denied in this town!");
+                    return false;
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("Error checking Towny permissions: " + e.getMessage());
                 return false;
             }
         }
@@ -157,11 +185,37 @@ public class ProtectionManager {
         }
     }
 
+    private boolean checkTownyPermission(Player player, Location location) {
+        try {
+            Class<?> townyAPIClass = Class.forName("com.palmergames.bukkit.towny.TownyAPI");
+            Object townyAPI = townyAPIClass.getMethod("getInstance").invoke(null);
+
+            Class<?> actionTypeClass = Class.forName("com.palmergames.bukkit.towny.object.TownyPermission$ActionType");
+            Object buildAction = actionTypeClass.getField("BUILD").get(null);
+
+            boolean canBuild = (boolean) townyAPIClass.getMethod("testPermission",
+                            org.bukkit.entity.Player.class,
+                            org.bukkit.Location.class,
+                            actionTypeClass)
+                    .invoke(townyAPI, player, location, buildAction);
+
+            return canBuild;
+
+        } catch (Exception e) {
+            plugin.getLogger().warning("Towny permission check failed: " + e.getMessage());
+            return false;
+        }
+    }
+
     public boolean isWorldGuardEnabled() {
         return worldGuardEnabled;
     }
 
     public boolean isSuperiorSkyblockEnabled() {
         return superiorSkyblockEnabled;
+    }
+
+    public boolean isTownyEnabled() {
+        return townyEnabled;
     }
 }

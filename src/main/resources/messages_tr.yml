@@ -1,60 +1,80 @@
-# LeafWE Türkçe Mesaj Dosyası
+# LeafWE Türkçe Mesajlar
 messages:
   # Genel Mesajlar
   reload-successful: '&aLeafWE ayarları başarıyla yeniden yüklendi!'
   no-permission: '&cBu komutu kullanmak için yetkiniz yok.'
-  players-only: '&cBu komut sadece oyuncular tarafından kullanılabilir.'
-  help-message: '&aLeafWE Komutları: &7/lwe <reload|give|undo|confirm|help>'
+  players-only: '&cBu komut yalnızca oyuncular tarafından kullanılabilir.'
+  help-message: '&aLeafWE Komutları: &7/lwe <reload|give|undo|confirm|limits|help>'
 
-  # Komut Kullanımları ve Hataları
+  # Komut Kullanımı ve Hatalar
   invalid-usage-give: '&cKullanım: /lwe give <oyuncu_adı>'
   player-not-found: '&cOyuncu bulunamadı: %player%'
-  invalid-usage-set: '&cKullanım: /set <block_name>'
+  invalid-usage-set: '&cKullanım: /set <blok_adı>'
   invalid-usage-wall: '&cKullanım: /wall <blok_adı>'
-  invalid-usage-replace: '&cKullanım: /replace <from_block> <to_block>'
+  invalid-usage-replace: '&cKullanım: /replace <eski_blok> <yeni_blok>'
 
-  # Yönlendirici Komut Mesajları
-  wall-block-specify: '&eLütfen duvarı örmek istediğin bloğun adını da yaz. &7Örnek: /wall stone'
-  replace-first-block-specify: '&eŞimdi, değiştirmek istediğin bloğun adını yaz. &7Örnek: /replace dirt'
-  replace-second-block-specify: '&aHarika! &eŞimdi ''%old_block%'' yerine hangi bloğu koymak istediğini yaz. &7Örnek: /replace %old_block% stone'
+  # Yönlendirmeli Komut Mesajları
+  wall-block-specify: '&eLütfen duvar için bir blok adı da belirtin. &7Örnek: /wall stone'
+  replace-first-block-specify: '&eŞimdi, değiştirmek istediğiniz bloğun adını belirtin. &7Örnek: /replace dirt'
+  replace-second-block-specify: '&aHarika! &eŞimdi ''%old_block%'' bloğunu ne ile değiştirmek istediğinizi yazın. &7Örnek: /replace %old_block% stone'
 
-  # Seçim ve Pipet Mesajları
-  select-pos1: '&cÖnce 1. pozisyonu seçmelisiniz! (İnşaat çubuğu ile sol tık)'
-  select-pos2: '&c1. pozisyon seçili. Şimdi 2. pozisyonu seçin! (İnşaat çubuğu ile sağ tık)'
-  pos1-set: '&a1. Pozisyon ayarlandı!'
-  pos2-set: '&a2. Pozisyon ayarlandı!'
+  # Seçim & Pipet Mesajları
+  select-pos1: '&cÖnce 1. pozisyonu seçmelisiniz! (Yapı çubuğu ile sol tık)'
+  select-pos2: '&c1. pozisyon ayarlandı. Şimdi 2. pozisyonu seçin! (Yapı çubuğu ile sağ tık)'
+  pos1-set: '&a1. pozisyon ayarlandı!'
+  pos2-set: '&a2. pozisyon ayarlandı!'
   blockstate-copied: '&aBlok durumu kopyalandı: &e%block%'
   blockstate-cleared: '&7Kopyalanan blok durumu temizlendi.'
 
   # Blok ve Envanter Kontrolleri
   invalid-block: '&cGeçersiz blok adı: %block%'
   blacklisted-block: '&cBu bloğu yerleştiremezsiniz! (Güvenlik nedeniyle engellendi)'
-  inventory-empty: '&cEnvanterinde hiç ''%block%'' yok!'
+  inventory-empty: '&cEnvanterinizde hiç ''%block%'' bloğu yok!'
 
   # İşlem Geri Bildirimleri
-  process-starting: '&aBlok yerleştirme işlemi başlatılıyor...'
-  inventory-ran-out: '&cEnvanterindeki %block% blokları bitti!'
-  process-complete: '&aİşlem tamamlandı! Toplam %placed% blok yerleştirildi.'
-  process-incomplete: '&eGeriye %remaining% blokluk yerleştirilemedi.'
+  process-starting: '&aBlok işlemi başlatılıyor...'
+  inventory-ran-out: '&cEnvanterinizde yeterli %block% bloğu kalmadı!'
+  process-complete: '&aİşlem tamamlandı! Toplamda %placed% blok etkilendi.'
+  process-incomplete: '&e%remaining% blok etkilenemedi.'
 
-  # Güvenlik ve Onay
-  volume-limit-exceeded: '&cSeçtiğiniz alan çok büyük! (Maks: %limit% blok). Bu işlemi yapma yetkiniz yok.'
-  confirmation-required: '&eBu işlem %total% blokluk bir alanı etkileyecek. Onaylamak için &a/lwe onayla &eyazın. (30 saniye içinde)'
+  # Güvenlik & Onay
+  volume-limit-exceeded: '&cSeçtiğiniz alan çok büyük! (Maks: %limit% blok). Bu işlem için izniniz yok.'
+  confirmation-required: '&eBu işlem %total% bloğu etkileyecek. Onaylamak için &a/lwe confirm &eyazın. (30 saniye içinde geçerlidir)'
   confirmation-pending: '&cZaten onay bekleyen bir işleminiz var.'
-  no-pending-confirmation: '&cOnaylanacak bir işleminiz yok.'
+  no-pending-confirmation: '&cOnay bekleyen bir işleminiz yok.'
   confirmation-successful: '&aİşlem onaylandı ve başlatıldı.'
   world-disabled: '&cLeafWE komutları bu dünyada kullanılamaz.'
-  task-already-running: '&cZaten devam eden bir işleminiz var. Lütfen bitmesini bekleyin.'
-  protection-no-permission: '&cBu korumalı alanda pozisyon seçemezsiniz.'
+  task-already-running: '&cZaten devam eden bir işleminiz var. Lütfen tamamlanmasını bekleyin.'
+  protection-no-permission: '&cKorumalı bölgede pozisyon seçemezsiniz.'
 
-  # GUI Mesajları
+  # Arayüz Mesajları
   gui-opened: '&eLütfen menüden bir blok seçin.'
-  replace-gui-opened: '&eLütfen değiştirilecek blokları ilgili slotlara yerleştirin.'
-  replace-gui-missing-blocks: '&cLütfen hem eski hem de yeni bloğu slotlara yerleştirin.'
+  replace-gui-opened: '&eLütfen değiştirmek istediğiniz blokları ilgili alanlara yerleştirin.'
+  replace-gui-missing-blocks: '&cLütfen hem eski hem yeni blokları yerleştirin.'
 
-  # Asa ve Geri Alma
-  wand-given-receiver: '&aSize bir İnşaat Çubuğu verildi!'
-  wand-given-sender: '&a%player% adlı oyuncuya İnşaat Çubuğu verildi.'
-  undo-successful: '&aSon işleminiz geri alındı. (Eşya iade edilmedi)'
-  undo-successful-with-refund: '&aİşlem geri alındı! &e%count% &ablok envanterinize iade edildi.'
-  no-undo: '&cGeri alınacak bir işleminiz bulunmuyor.'
+  # Yapı Çubuğu & Geri Alma
+  wand-given-receiver: '&aSize bir Yapı Çubuğu verildi!'
+  wand-given-sender: '&a%player% oyuncusuna bir Yapı Çubuğu verildi.'
+  undo-successful: '&aSon işleminiz geri alındı. (Eşyalar iade edilmedi)'
+  undo-successful-with-refund: '&aİşlem geri alındı! &e%count% &ablik envanterinize iade edildi.'
+  no-undo: '&cGeri alınacak bir işlem bulunamadı.'
+
+  # İlerleme Çubuğu Mesajları (YENİ)
+  progress-operation-placing: "Yerleştiriliyor"
+  progress-operation-replacing: "Değiştiriliyor:"
+  progress-operation-block-placement: "Blok yerleştirme"
+  progress-operation-block-replacement: "Blok değiştirme"
+  progress-error-inventory: "Envanter tükendi"
+  progress-completed: "tamamlandı!"
+  progress-cancelled: "iptal edildi"
+
+  # Günlük Limit Mesajları (YENİ)
+  daily-limits-disabled: "&7Bu sunucuda günlük limitler devre dışı."
+  daily-limits-header: "&6=== Günlük Limitler ==="
+  daily-limits-group: "&eGrubunuz: &a%group%"
+  daily-limits-blocks: "&7Bloklar: &a%used%&7/&e%max% &7(Kalan: &b%remaining%&7)"
+  daily-limits-operations: "&7İşlemler: &a%used%&7/&e%max% &7(Kalan: &b%remaining%&7)"
+  daily-limits-blocks-unlimited: "&7Bloklar: &aSınırsız"
+  daily-limits-operations-unlimited: "&7İşlemler: &aSınırsız"
+  daily-limit-blocks-exceeded: "&cGünlük blok limiti aşıldı! (&a%used%&c/&e%max%&c) Grup: &7%group%"
+  daily-limit-operations-exceeded: "&cGünlük işlem limiti aşıldı! (&a%used%&c/&e%max%&c) Grup: &7%group%"

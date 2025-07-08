@@ -2,12 +2,12 @@ name: LeafWE
 version: '${project.version}'
 main: com.leaf.leafwe.LeafWE
 api-version: 1.19
-author: LeafDev
+author: BaranMRJ
 description: A lightweight WorldEdit alternative for Minecraft servers
-website: https://github.com/leaf/leafwe
+website: https://kareblok.tc
 
 # Load after WorldGuard
-softdepend: [WorldGuard, SuperiorSkyblock2]
+softdepend: [WorldGuard, SuperiorSkyblock2, Towny]
 
 commands:
   set:
@@ -24,7 +24,7 @@ commands:
     permission: leafwe.replace
   lwe:
     description: LeafWE main command
-    usage: /<command> [reload|give|undo|confirm|help]
+    usage: /<command> [reload|give|undo|confirm|limits|resetlimits|givelimits|help]
     aliases: [leafwe]
 
 permissions:
@@ -40,6 +40,9 @@ permissions:
       leafwe.reload: true
       leafwe.bypass.limit: true
       leafwe.bypass.protection: true
+      leafwe.limits.others: true
+      leafwe.resetlimits: true
+      leafwe.givelimits: true
   leafwe.use:
     description: Use /set command
     default: true

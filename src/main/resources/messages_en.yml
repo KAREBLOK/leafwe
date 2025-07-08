@@ -4,7 +4,7 @@ messages:
   reload-successful: '&aLeafWE settings have been successfully reloaded!'
   no-permission: '&cYou do not have permission to use this command.'
   players-only: '&cThis command can only be used by a player.'
-  help-message: '&aLeafWE Commands: &7/lwe <reload|give|undo|confirm|help>'
+  help-message: '&aLeafWE Commands: &7/lwe <reload|give|undo|confirm|limits|help>'
 
   # Command Usage & Errors
   invalid-usage-give: '&cUsage: /lwe give <player_name>'
@@ -58,3 +58,23 @@ messages:
   undo-successful: '&aYour last operation has been undone. (No items were refunded)'
   undo-successful-with-refund: '&aOperation undone! &e%count% &ablocks have been returned to your inventory.'
   no-undo: '&cThere are no operations to undo.'
+
+  # Progress Bar Messages (NEW)
+  progress-operation-placing: "Placing"
+  progress-operation-replacing: "Replacing with"
+  progress-operation-block-placement: "Block placement"
+  progress-operation-block-replacement: "Block replacement"
+  progress-error-inventory: "Inventory ran out"
+  progress-completed: "completed!"
+  progress-cancelled: "cancelled"
+
+  # Daily Limits Messages (NEW)
+  daily-limits-disabled: "&7Daily limits are disabled on this server."
+  daily-limits-header: "&6=== Daily Limits ==="
+  daily-limits-group: "&eYour group: &a%group%"
+  daily-limits-blocks: "&7Blocks: &a%used%&7/&e%max% &7(Remaining: &b%remaining%&7)"
+  daily-limits-operations: "&7Operations: &a%used%&7/&e%max% &7(Remaining: &b%remaining%&7)"
+  daily-limits-blocks-unlimited: "&7Blocks: &aUnlimited"
+  daily-limits-operations-unlimited: "&7Operations: &aUnlimited"
+  daily-limit-blocks-exceeded: "&cDaily block limit exceeded! (&a%used%&c/&e%max%&c) Group: &7%group%"
+  daily-limit-operations-exceeded: "&cDaily operation limit exceeded! (&a%used%&c/&e%max%&c) Group: &7%group%"

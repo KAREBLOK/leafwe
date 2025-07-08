@@ -17,6 +17,7 @@ import java.util.List;
 
 public class BlockPlacerTask extends BukkitRunnable {
 
+    private final LeafWE plugin;
     private final Player player;
     private final List<Location> locationsToFill;
     private final Material material;
@@ -24,11 +25,15 @@ public class BlockPlacerTask extends BukkitRunnable {
     private final SelectionVisualizer selectionVisualizer;
     private final TaskManager taskManager;
     private final BlockstateManager blockstateManager;
+    private final int totalBlocks;
     private int blocksPlaced = 0;
     private ArmorStand worker = null;
     private boolean isRunning = true;
+    private boolean isCompleted = false;
+    private boolean limitsRecorded = false;
 
-    public BlockPlacerTask(Player player, List<Location> locations, Material material, ConfigManager configManager, SelectionVisualizer visualizer, TaskManager taskManager, BlockstateManager blockstateManager) {
+    public BlockPlacerTask(LeafWE plugin, Player player, List<Location> locations, Material material, ConfigManager configManager, SelectionVisualizer visualizer, TaskManager taskManager, BlockstateManager blockstateManager) {
+        this.plugin = plugin;
         this.player = player;
         this.locationsToFill = locations;
         this.material = material;
@@ -36,6 +41,7 @@ public class BlockPlacerTask extends BukkitRunnable {
         this.selectionVisualizer = visualizer;
         this.taskManager = taskManager;
         this.blockstateManager = blockstateManager;
+        this.totalBlocks = locations.size();
     }
 
     @Override
@@ -73,19 +79,43 @@ public class BlockPlacerTask extends BukkitRunnable {
             player.getInventory().removeItem(new ItemStack(material, 1));
             blocksPlaced++;
         }
+
+        String operationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(configManager.getProgressOperationPlacing());
+        ProgressBarManager.showProgress(player, blocksPlaced, totalBlocks,
+                operationText + " " + material.name().toLowerCase());
     }
 
     private void finishTask() {
         isRunning = false;
+        isCompleted = true;
         cleanupWorker();
         taskManager.finishTask(player);
         selectionVisualizer.playSuccessEffect(player);
+
+        if (!limitsRecorded && blocksPlaced > 0) {
+            DailyLimitManager dailyLimitManager = plugin.getDailyLimitManager();
+            if (dailyLimitManager != null) {
+                dailyLimitManager.recordUsage(player, blocksPlaced);
+                limitsRecorded = true;
+            }
+        }
 
         if (!locationsToFill.isEmpty()) {
             player.sendMessage(configManager.getMessage("inventory-ran-out")
                     .replaceText(config -> config.matchLiteral("%block%").replacement(material.name())));
             player.sendMessage(configManager.getMessage("process-incomplete")
                     .replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(locationsToFill.size()))));
+
+            String operationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(configManager.getProgressOperationPlacing());
+            String errorText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(configManager.getProgressErrorInventory());
+            ProgressBarManager.showError(player, operationText, errorText);
+        } else {
+            String completionText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(configManager.getProgressOperationBlockPlacement());
+            ProgressBarManager.showCompletion(player, blocksPlaced, completionText);
         }
 
         player.sendMessage(configManager.getMessage("process-complete")
@@ -105,6 +135,13 @@ public class BlockPlacerTask extends BukkitRunnable {
     public synchronized void cancel() throws IllegalStateException {
         isRunning = false;
         cleanupWorker();
+
+        if (player.isOnline() && !isCompleted) {
+            String cancellationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(configManager.getProgressOperationBlockPlacement());
+            ProgressBarManager.showCancellation(player, cancellationText);
+        }
+
         super.cancel();
     }
 

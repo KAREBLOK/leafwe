@@ -13,6 +13,7 @@ public final class LeafWE extends JavaPlugin {
     private BlockstateManager blockstateManager;
     private GuiManager guiManager;
     private ProtectionManager protectionManager;
+    private DailyLimitManager dailyLimitManager;
 
     @Override
     public void onEnable() {
@@ -26,6 +27,7 @@ public final class LeafWE extends JavaPlugin {
             this.blockstateManager = new BlockstateManager();
             this.guiManager = new GuiManager(this, configManager);
             this.protectionManager = new ProtectionManager(this);
+            this.dailyLimitManager = new DailyLimitManager(this, configManager);
 
             registerCommands();
             registerListeners();
@@ -36,7 +38,7 @@ public final class LeafWE extends JavaPlugin {
                 }
             }, 1L);
 
-            getLogger().info("LeafWE v3.7.0 successfully enabled!");
+            getLogger().info("LeafWE v4.0.3 successfully enabled!");
 
         } catch (Exception e) {
             getLogger().severe("Failed to enable LeafWE: " + e.getMessage());
@@ -97,6 +99,10 @@ public final class LeafWE extends JavaPlugin {
                 blockstateManager.cleanupAll();
             }
 
+            if (dailyLimitManager != null) {
+                dailyLimitManager.shutdown();
+            }
+
             getLogger().info("LeafWE disabled successfully.");
 
         } catch (Exception e) {
@@ -138,5 +144,9 @@ public final class LeafWE extends JavaPlugin {
 
     public ProtectionManager getProtectionManager() {
         return protectionManager;
+    }
+
+    public DailyLimitManager getDailyLimitManager() {
+        return dailyLimitManager;
     }
 }

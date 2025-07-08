@@ -38,24 +38,20 @@ public class WandListener implements Listener {
             return;
         }
 
-        // Seçim çubuğu ile yapılan tüm varsayılan eylemleri iptal et
         event.setCancelled(true);
 
         Block clickedBlock = event.getClickedBlock();
         Action action = event.getAction();
 
-        // Önce Pipet Aracı özelliğini kontrol et (eğilip sağ tıklama)
         if (configManager.isPipetteToolEnabled() && player.isSneaking() &&
                 (action == Action.RIGHT_CLICK_BLOCK || action == Action.RIGHT_CLICK_AIR)) {
             handlePipetteAction(player, clickedBlock);
             return;
         }
 
-        // Normal seçim işlemi (sol veya sağ tık)
         if (clickedBlock != null && (action == Action.LEFT_CLICK_BLOCK || action == Action.RIGHT_CLICK_BLOCK)) {
             Location loc = clickedBlock.getLocation();
 
-            // WorldGuard koruma kontrolü
             if (!protectionManager.canBuild(player, loc)) {
                 player.sendMessage(configManager.getMessage("protection-no-permission"));
                 return;
@@ -75,13 +71,11 @@ public class WandListener implements Listener {
                         .replaceText(config -> config.matchLiteral("%z%").replacement(String.valueOf(loc.getBlockZ()))));
             }
 
-            // Her seçimden sonra partikül görselleştirmesini başlat/güncelle
             selectionVisualizer.start(player);
         }
     }
 
     private void handlePipetteAction(Player player, Block clickedBlock) {
-        // Eğilip boşluğa sağ tıklarsa kopyalanmış veriyi temizle
         if (clickedBlock == null || clickedBlock.getType().isAir()) {
             if (blockstateManager.getCopiedBlockstate(player) != null) {
                 blockstateManager.clearCopiedBlockstate(player);
@@ -91,7 +85,6 @@ public class WandListener implements Listener {
             return;
         }
 
-        // Bir bloğa tıklarsa, verisini kopyala
         try {
             blockstateManager.setCopiedBlockstate(player, clickedBlock.getBlockData());
             player.playSound(player.getLocation(), configManager.getPipetteCopySound(), 1.0f, 1.2f);

@@ -24,9 +24,11 @@ public class ReplaceTask extends BukkitRunnable {
     private final SelectionVisualizer selectionVisualizer;
     private final TaskManager taskManager;
     private final BlockstateManager blockstateManager;
+    private final int totalBlocks;
     private int blocksReplaced = 0;
     private ArmorStand worker = null;
     private boolean isRunning = true;
+    private boolean isCompleted = false;
 
     public ReplaceTask(Player player, List<Block> blocksToChange, Material toMaterial,
                        ConfigManager configManager, SelectionVisualizer visualizer,
@@ -38,6 +40,7 @@ public class ReplaceTask extends BukkitRunnable {
         this.selectionVisualizer = visualizer;
         this.taskManager = taskManager;
         this.blockstateManager = blockstateManager;
+        this.totalBlocks = blocksToChange.size();
     }
 
     @Override
@@ -75,10 +78,16 @@ public class ReplaceTask extends BukkitRunnable {
 
         player.getInventory().removeItem(new ItemStack(toMaterial, 1));
         blocksReplaced++;
+
+        String operationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(configManager.getProgressOperationReplacing());
+        ProgressBarManager.showProgress(player, blocksReplaced, totalBlocks,
+                operationText + " " + toMaterial.name().toLowerCase());
     }
 
     private void finishTask() {
         isRunning = false;
+        isCompleted = true;
         cleanupWorker();
         taskManager.finishTask(player);
         selectionVisualizer.playSuccessEffect(player);
@@ -88,6 +97,16 @@ public class ReplaceTask extends BukkitRunnable {
                     .replaceText(config -> config.matchLiteral("%block%").replacement(toMaterial.name())));
             player.sendMessage(configManager.getMessage("process-incomplete")
                     .replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(blocksToChange.size()))));
+
+            String operationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(configManager.getProgressOperationReplacing());
+            String errorText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(configManager.getProgressErrorInventory());
+            ProgressBarManager.showError(player, operationText, errorText);
+        } else {
+            String completionText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(configManager.getProgressOperationBlockReplacement());
+            ProgressBarManager.showCompletion(player, blocksReplaced, completionText);
         }
 
         player.sendMessage(configManager.getMessage("process-complete")
@@ -107,6 +126,13 @@ public class ReplaceTask extends BukkitRunnable {
     public synchronized void cancel() throws IllegalStateException {
         isRunning = false;
         cleanupWorker();
+
+        if (player.isOnline() && !isCompleted) {
+            String cancellationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(configManager.getProgressOperationBlockReplacement());
+            ProgressBarManager.showCancellation(player, cancellationText);
+        }
+
         super.cancel();
     }
 
