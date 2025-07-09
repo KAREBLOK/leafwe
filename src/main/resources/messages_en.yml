@@ -68,6 +68,9 @@ messages:
   progress-completed: "completed!"
   progress-cancelled: "cancelled"
 
+  # Task Management (NEW)
+  task-cancelled-for-undo: "&eActive task cancelled for undo operation."
+
   # Daily Limits Messages (NEW)
   daily-limits-disabled: "&7Daily limits are disabled on this server."
   daily-limits-header: "&6=== Daily Limits ==="

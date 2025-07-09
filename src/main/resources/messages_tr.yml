@@ -68,6 +68,9 @@ messages:
   progress-completed: "tamamlandı!"
   progress-cancelled: "iptal edildi"
 
+  # Görev Yönetimi (YENİ)
+  task-cancelled-for-undo: "Geri alma işlemi nedeniyle etkin görev iptal edildi."
+
   # Günlük Limit Mesajları (YENİ)
   daily-limits-disabled: "&7Bu sunucuda günlük limitler devre dışı."
   daily-limits-header: "&6=== Günlük Limitler ==="

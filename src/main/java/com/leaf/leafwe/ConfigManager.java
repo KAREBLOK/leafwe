@@ -78,7 +78,7 @@ public class ConfigManager {
 
     public int getSpeed() {
         int speed = config.getInt("settings.speed", 2);
-        return Math.max(1, Math.min(20, speed));
+        return Math.max(1, Math.min(20, speed)); // Limit between 1-20
     }
 
     public boolean isVisualizerEnabled() {
@@ -198,6 +198,7 @@ public class ConfigManager {
             int g = Integer.parseInt(rgb[1]);
             int b = Integer.parseInt(rgb[2]);
 
+            // RGB değerlerini kontrol et
             if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
                 plugin.getLogger().warning("RGB values must be between 0-255. Using default aqua color.");
                 return Color.AQUA;
@@ -243,6 +244,7 @@ public class ConfigManager {
                 .collect(Collectors.toSet());
     }
 
+    // Progress Bar Messages
     public Component getProgressOperationPlacing() {
         return getMessage("progress-operation-placing");
     }
@@ -271,6 +273,7 @@ public class ConfigManager {
         return getMessage("progress-cancelled");
     }
 
+    // Daily Limits
     public boolean isDailyLimitsEnabled() {
         return config.getBoolean("daily-limits.enabled", false);
     }
@@ -279,6 +282,7 @@ public class ConfigManager {
         return config.getString("daily-limits.reset-time", "00:00");
     }
 
+    // Daily Limit Messages
     public Component getDailyLimitBlocksExceeded() {
         return getMessage("daily-limit-blocks-exceeded");
     }
@@ -315,6 +319,12 @@ public class ConfigManager {
         return getMessage("daily-limits-operations-unlimited");
     }
 
+    // Task cancellation message
+    public Component getTaskCancelledForUndo() {
+        return getMessage("task-cancelled-for-undo");
+    }
+
+    // Config access method
     public FileConfiguration getConfig() {
         return config;
     }

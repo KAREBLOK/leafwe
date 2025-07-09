@@ -4,6 +4,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class LeafWE extends JavaPlugin {
 
+    // Tüm yönetici sınıflarımız için alanlar
     private ConfigManager configManager;
     private SelectionManager selectionManager;
     private UndoManager undoManager;
@@ -12,12 +13,13 @@ public final class LeafWE extends JavaPlugin {
     private TaskManager taskManager;
     private BlockstateManager blockstateManager;
     private GuiManager guiManager;
-    private ProtectionManager protectionManager;
-    private DailyLimitManager dailyLimitManager;
+    private ProtectionManager protectionManager; // WorldGuard yöneticimiz
+    private DailyLimitManager dailyLimitManager; // Günlük limit yöneticisi
 
     @Override
     public void onEnable() {
         try {
+            // Plugin başladığında tüm yönetici sınıflarını başlat
             this.configManager = new ConfigManager(this);
             this.selectionManager = new SelectionManager();
             this.undoManager = new UndoManager(this, configManager);
@@ -26,19 +28,21 @@ public final class LeafWE extends JavaPlugin {
             this.taskManager = new TaskManager();
             this.blockstateManager = new BlockstateManager();
             this.guiManager = new GuiManager(this, configManager);
-            this.protectionManager = new ProtectionManager(this);
-            this.dailyLimitManager = new DailyLimitManager(this, configManager);
+            this.protectionManager = new ProtectionManager(this); // Yeni yöneticiyi başlat
+            this.dailyLimitManager = new DailyLimitManager(this, configManager); // Daily limit yöneticisi
 
+            // Komutları ve dinleyicileri kaydet
             registerCommands();
             registerListeners();
 
+            // WorldGuard hook'unu 1 tick sonra çalıştır
             getServer().getScheduler().runTaskLater(this, () -> {
                 if (protectionManager != null) {
                     protectionManager.initializeHooksDelayed();
                 }
             }, 1L);
 
-            getLogger().info("LeafWE v4.0.3 successfully enabled!");
+            getLogger().info("LeafWE v3.7.0 successfully enabled!");
 
         } catch (Exception e) {
             getLogger().severe("Failed to enable LeafWE: " + e.getMessage());
@@ -49,6 +53,7 @@ public final class LeafWE extends JavaPlugin {
 
     private void registerCommands() {
         try {
+            // Komut sınıflarına artık ProtectionManager da gönderiliyor
             if (this.getCommand("set") != null) {
                 this.getCommand("set").setExecutor(new SetCommand(this, selectionManager, configManager, undoManager,
                         pendingCommandManager, selectionVisualizer, taskManager, blockstateManager, guiManager));
@@ -73,6 +78,7 @@ public final class LeafWE extends JavaPlugin {
 
     private void registerListeners() {
         try {
+            // Listener'ların constructor'ları bu değişiklikten etkilenmiyor
             getServer().getPluginManager().registerEvents(new WandListener(selectionManager, configManager,
                     selectionVisualizer, blockstateManager, protectionManager), this);
             getServer().getPluginManager().registerEvents(new PlayerListener(selectionManager, undoManager,
@@ -87,6 +93,7 @@ public final class LeafWE extends JavaPlugin {
     @Override
     public void onDisable() {
         try {
+            // Cleanup tasks
             if (taskManager != null) {
                 taskManager.cancelAllTasks();
             }
@@ -110,6 +117,7 @@ public final class LeafWE extends JavaPlugin {
         }
     }
 
+    // Getter methods for other classes to access managers
     public ConfigManager getConfigManager() {
         return configManager;
     }
@@ -128,6 +136,10 @@ public final class LeafWE extends JavaPlugin {
 
     public SelectionVisualizer getSelectionVisualizer() {
         return selectionVisualizer;
+    }
+
+    public TaskManager getTaskManager() {
+        return taskManager;
     }
 
     public TaskManager getTaskManager() {
