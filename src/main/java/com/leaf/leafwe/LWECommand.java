@@ -117,12 +117,10 @@ public class LWECommand implements CommandExecutor {
             return true;
         }
 
-        // Aktif task varsa iptal et
         TaskManager taskManager = plugin.getTaskManager();
         if (taskManager != null && taskManager.hasActiveTask(player)) {
             taskManager.finishTask(player);
             player.sendMessage(configManager.getTaskCancelledForUndo());
-            // Progress bar'da iptal mesajı göster
             ProgressBarManager.showCancellation(player, "Operation cancelled for undo");
         }
 
@@ -166,12 +164,10 @@ public class LWECommand implements CommandExecutor {
 
         DailyLimitManager.DailyUsageInfo usageInfo = dailyLimitManager.getUsageInfo(player);
 
-        // Limit bilgilerini göster
         player.sendMessage(configManager.getDailyLimitsHeader());
         player.sendMessage(configManager.getDailyLimitsGroup()
                 .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
 
-        // Block limits
         if (usageInfo.maxBlocks == -1) {
             player.sendMessage(configManager.getDailyLimitsBlocksUnlimited());
         } else {
@@ -181,7 +177,6 @@ public class LWECommand implements CommandExecutor {
                     .replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(usageInfo.getRemainingBlocks()))));
         }
 
-        // Operation limits
         if (usageInfo.maxOperations == -1) {
             player.sendMessage(configManager.getDailyLimitsOperationsUnlimited());
         } else {

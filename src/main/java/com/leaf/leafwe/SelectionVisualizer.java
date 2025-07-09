@@ -14,7 +14,11 @@ public class SelectionVisualizer {
     private final SelectionManager selectionManager;
     private final ConfigManager configManager;
     private final ConcurrentHashMap<UUID, BukkitTask> activeTasks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, Long> lastActivity = new ConcurrentHashMap<>();
     private volatile boolean isShuttingDown = false;
+
+    private static final long DEFAULT_TIMEOUT_SECONDS = 300;
+    private static final long ACTIVITY_CHECK_INTERVAL = 60;
 
     public SelectionVisualizer(LeafWE plugin, SelectionManager selManager, ConfigManager confManager) {
         this.plugin = plugin;
@@ -27,14 +31,30 @@ public class SelectionVisualizer {
 
         stop(player);
 
+        updateLastActivity(player);
+
         try {
             BukkitTask task = new BukkitRunnable() {
+                private int tickCount = 0;
+
                 @Override
                 public void run() {
                     if (isShuttingDown || !player.isOnline()) {
                         this.cancel();
                         activeTasks.remove(player.getUniqueId());
+                        lastActivity.remove(player.getUniqueId());
                         return;
+                    }
+
+                    // Her 60 tick'te bir (3 saniye) timeout kontrolü yap
+                    if (tickCount % ACTIVITY_CHECK_INTERVAL == 0) {
+                        if (isTimedOut(player)) {
+                            player.sendActionBar(plugin.getConfigManager().getMessage("selection-visualizer-timeout"));
+                            this.cancel();
+                            activeTasks.remove(player.getUniqueId());
+                            lastActivity.remove(player.getUniqueId());
+                            return;
+                        }
                     }
 
                     Location pos1 = selectionManager.getPosition1(player);
@@ -43,16 +63,19 @@ public class SelectionVisualizer {
                     if (pos1 == null || pos2 == null) {
                         this.cancel();
                         activeTasks.remove(player.getUniqueId());
+                        lastActivity.remove(player.getUniqueId());
                         return;
                     }
 
                     if (!pos1.getWorld().equals(pos2.getWorld())) {
                         this.cancel();
                         activeTasks.remove(player.getUniqueId());
+                        lastActivity.remove(player.getUniqueId());
                         return;
                     }
 
                     drawBox(pos1, pos2, Color.AQUA, player);
+                    tickCount++;
                 }
             }.runTaskTimerAsynchronously(plugin, 0L, 20L);
 
@@ -110,6 +133,8 @@ public class SelectionVisualizer {
             } catch (IllegalStateException e) {
             }
         }
+
+        lastActivity.remove(player.getUniqueId());
     }
 
     public void shutdown() {
@@ -124,6 +149,35 @@ public class SelectionVisualizer {
             }
         }
         activeTasks.clear();
+        lastActivity.clear();
+    }
+
+    public void updateLastActivity(Player player) {
+        if (player != null) {
+            lastActivity.put(player.getUniqueId(), System.currentTimeMillis());
+        }
+    }
+
+    private boolean isTimedOut(Player player) {
+        if (player == null) return true;
+
+        Long lastTime = lastActivity.get(player.getUniqueId());
+        if (lastTime == null) return true;
+
+        long timeoutMillis = getTimeoutSeconds() * 1000;
+        return (System.currentTimeMillis() - lastTime) > timeoutMillis;
+    }
+
+    private long getTimeoutSeconds() {
+        return configManager.getConfig().getLong("settings.selection-timeout", DEFAULT_TIMEOUT_SECONDS);
+    }
+
+    public int getActiveVisualizationCount() {
+        return activeTasks.size();
+    }
+
+    public boolean hasActiveVisualization(Player player) {
+        return player != null && activeTasks.containsKey(player.getUniqueId());
     }
 
     private void drawBox(Location corner1, Location corner2, Color color, Player player) {
@@ -141,6 +195,7 @@ public class SelectionVisualizer {
 
             double step = calculateStep(minX, minY, minZ, maxX, maxY, maxZ);
 
+            // X ekseni kenarları
             for (double x = minX; x <= maxX; x += step) {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), x, minY, minZ), dustOptions, player);
                 spawnParticleForPlayer(new Location(corner1.getWorld(), x, maxY, minZ), dustOptions, player);
@@ -148,6 +203,7 @@ public class SelectionVisualizer {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), x, maxY, maxZ), dustOptions, player);
             }
 
+            // Y ekseni kenarları
             for (double y = minY; y <= maxY; y += step) {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), minX, y, minZ), dustOptions, player);
                 spawnParticleForPlayer(new Location(corner1.getWorld(), maxX, y, minZ), dustOptions, player);
@@ -155,6 +211,7 @@ public class SelectionVisualizer {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), maxX, y, maxZ), dustOptions, player);
             }
 
+            // Z ekseni kenarları
             for (double z = minZ; z <= maxZ; z += step) {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), minX, minY, z), dustOptions, player);
                 spawnParticleForPlayer(new Location(corner1.getWorld(), maxX, minY, z), dustOptions, player);

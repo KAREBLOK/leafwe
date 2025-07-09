@@ -17,6 +17,9 @@ settings:
   max-undo: 10
   # The maximum volume of blocks a non-admin player can affect at once.
   max-volume: 50000
+  # Selection visualization timeout (seconds)
+  selection-timeout: 180 # 3 minutes (default)
+
 
   # Settings for the success effect after an operation is complete.
   success-effect:

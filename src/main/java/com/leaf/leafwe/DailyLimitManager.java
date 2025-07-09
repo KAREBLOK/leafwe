@@ -75,12 +75,9 @@ public class DailyLimitManager {
         }
     }
 
-    /**
-     * Player'ın işlem yapıp yapamayacağını kontrol eder
-     */
-    public boolean canPerformOperation(Player player, int blockCount) {
+    public LimitCheckResult canPerformOperation(Player player, int blockCount) {
         if (!isDailyLimitsEnabled()) {
-            return true;
+            return new LimitCheckResult(true, LimitType.NONE, "");
         }
 
         String playerGroup = getPlayerGroup(player);
@@ -89,24 +86,21 @@ public class DailyLimitManager {
         int maxBlocks = getGroupMaxBlocks(playerGroup);
         int maxOperations = getGroupMaxOperations(playerGroup);
 
-        if (maxBlocks == -1 && maxOperations == -1) {
-            return true;
+        if (maxOperations != -1 && (usage.operationsUsed + 1) > maxOperations) {
+            return new LimitCheckResult(false, LimitType.OPERATIONS, playerGroup);
         }
 
         if (maxBlocks != -1 && (usage.blocksUsed + blockCount) > maxBlocks) {
-            return false;
+            return new LimitCheckResult(false, LimitType.BLOCKS, playerGroup);
         }
 
-        if (maxOperations != -1 && (usage.operationsUsed + 1) > maxOperations) {
-            return false;
-        }
-
-        return true;
+        return new LimitCheckResult(true, LimitType.NONE, playerGroup);
     }
 
-    /**
-     * İşlem gerçekleştikten sonra kullanımı günceller
-     */
+    public boolean canPerformOperation(Player player, int blockCount) {
+        return canPerformOperation(player, blockCount).canPerform;
+    }
+
     public void recordUsage(Player player, int blockCount) {
         if (!isDailyLimitsEnabled()) {
             return;
@@ -125,9 +119,6 @@ public class DailyLimitManager {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, this::saveUsageData);
     }
 
-    /**
-     * Player'ın günlük kullanım bilgilerini getirir
-     */
     public DailyUsageInfo getUsageInfo(Player player) {
         if (!isDailyLimitsEnabled()) {
             return new DailyUsageInfo(-1, -1, 0, 0, "unlimited");
@@ -209,9 +200,6 @@ public class DailyLimitManager {
         }
     }
 
-    /**
-     * Günlük kullanım verilerini temizler (yeni gün için)
-     */
     public void resetDailyData() {
         String today = getCurrentDate();
 
@@ -226,16 +214,10 @@ public class DailyLimitManager {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, this::saveUsageData);
     }
 
-    /**
-     * Plugin kapatılırken verileri kaydet
-     */
     public void shutdown() {
         saveUsageData();
     }
 
-    /**
-     * Player'ın limitlerini sıfırlar (Admin komutu)
-     */
     public void resetPlayerLimits(Player player) {
         if (player == null) return;
 
@@ -247,9 +229,6 @@ public class DailyLimitManager {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, this::saveUsageData);
     }
 
-    /**
-     * Player'a bonus limit verir (Admin komutu)
-     */
     public void setPlayerBonusLimits(Player player, int bonusBlocks) {
         if (player == null) return;
 
@@ -299,5 +278,23 @@ public class DailyLimitManager {
         public int getRemainingOperations() {
             return maxOperations == -1 ? -1 : Math.max(0, maxOperations - usedOperations);
         }
+    }
+
+    public static class LimitCheckResult {
+        public final boolean canPerform;
+        public final LimitType limitType;
+        public final String playerGroup;
+
+        public LimitCheckResult(boolean canPerform, LimitType limitType, String playerGroup) {
+            this.canPerform = canPerform;
+            this.limitType = limitType;
+            this.playerGroup = playerGroup;
+        }
+    }
+
+    public enum LimitType {
+        NONE,
+        BLOCKS,
+        OPERATIONS
     }
 }

@@ -5,6 +5,7 @@ messages:
   no-permission: '&cBu komutu kullanmak için yetkiniz yok.'
   players-only: '&cBu komut yalnızca oyuncular tarafından kullanılabilir.'
   help-message: '&aLeafWE Komutları: &7/lwe <reload|give|undo|confirm|limits|help>'
+  selection-visualizer-timeout: "&73 dakikadır işlem yapılmadığı için seçim görselleştirme iptal edildi."
 
   # Komut Kullanımı ve Hatalar
   invalid-usage-give: '&cKullanım: /lwe give <oyuncu_adı>'

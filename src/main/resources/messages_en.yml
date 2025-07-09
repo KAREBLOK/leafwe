@@ -5,6 +5,7 @@ messages:
   no-permission: '&cYou do not have permission to use this command.'
   players-only: '&cThis command can only be used by a player.'
   help-message: '&aLeafWE Commands: &7/lwe <reload|give|undo|confirm|limits|help>'
+  selection-visualizer-timeout: "&7Selection visualization timed out after 3 minutes"
 
   # Command Usage & Errors
   invalid-usage-give: '&cUsage: /lwe give <player_name>'
