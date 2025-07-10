@@ -1,5 +1,6 @@
-package com.leaf.leafwe;
+package com.leaf.leafwe.commands.impl;
 
+import com.leaf.leafwe.*;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -9,15 +10,15 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-public class LWECommand implements CommandExecutor {
+public class LWECommandImpl implements CommandExecutor {
     private final LeafWE plugin;
     private final ConfigManager configManager;
     private final UndoManager undoManager;
     private final PendingCommandManager pendingCommandManager;
     private final BlockstateManager blockstateManager;
 
-    public LWECommand(LeafWE plugin, ConfigManager configManager, UndoManager undoManager,
-                      PendingCommandManager pendingManager, BlockstateManager blockstateManager) {
+    public LWECommandImpl(LeafWE plugin, ConfigManager configManager, UndoManager undoManager,
+                          PendingCommandManager pendingManager, BlockstateManager blockstateManager) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.undoManager = undoManager;

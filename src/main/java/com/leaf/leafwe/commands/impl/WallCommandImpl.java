@@ -1,5 +1,6 @@
-package com.leaf.leafwe;
+package com.leaf.leafwe.commands.impl;
 
+import com.leaf.leafwe.*;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -14,7 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class WallCommand implements CommandExecutor {
+public class WallCommandImpl implements CommandExecutor {
     private final LeafWE plugin;
     private final SelectionManager selectionManager;
     private final ConfigManager configManager;
@@ -25,10 +26,10 @@ public class WallCommand implements CommandExecutor {
     private final BlockstateManager blockstateManager;
     private final GuiManager guiManager;
 
-    public WallCommand(LeafWE plugin, SelectionManager selManager, ConfigManager confManager,
-                       UndoManager undoManager, PendingCommandManager pendingManager,
-                       SelectionVisualizer visualizer, TaskManager taskManager,
-                       BlockstateManager blockstateManager, GuiManager guiManager) {
+    public WallCommandImpl(LeafWE plugin, SelectionManager selManager, ConfigManager confManager,
+                           UndoManager undoManager, PendingCommandManager pendingManager,
+                           SelectionVisualizer visualizer, TaskManager taskManager,
+                           BlockstateManager blockstateManager, GuiManager guiManager) {
         this.plugin = plugin;
         this.selectionManager = selManager;
         this.configManager = confManager;
@@ -131,6 +132,7 @@ public class WallCommand implements CommandExecutor {
             for (int x = minX; x <= maxX; x++) {
                 for (int y = minY; y <= maxY; y++) {
                     for (int z = minZ; z <= maxZ; z++) {
+                        // Wall logic: sadece kenar blokları
                         if (x == minX || x == maxX || z == minZ || z == maxZ) {
                             Location loc = new Location(world, x, y, z);
                             locationsToFill.add(loc);
@@ -150,6 +152,32 @@ public class WallCommand implements CommandExecutor {
         }
 
         long volume = locationsToFill.size();
+
+        // DailyLimitManager kontrolü - düzeltilmiş versiyon
+        DailyLimitManager dailyLimitManager = plugin.getDailyLimitManager();
+        if (dailyLimitManager != null) {
+            DailyLimitManager.LimitCheckResult limitResult = dailyLimitManager.canPerformOperationDetailed(player, (int) volume);
+
+            if (!limitResult.canPerform) {
+                DailyLimitManager.DailyUsageInfo usageInfo = dailyLimitManager.getUsageInfo(player);
+
+                if (limitResult.limitType == DailyLimitManager.LimitType.BLOCKS) {
+                    // Blok limiti aşıldı
+                    player.sendMessage(configManager.getDailyLimitBlocksExceeded()
+                            .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedBlocks)))
+                            .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxBlocks)))
+                            .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
+                } else if (limitResult.limitType == DailyLimitManager.LimitType.OPERATIONS) {
+                    // İşlem limiti aşıldı
+                    player.sendMessage(configManager.getDailyLimitOperationsExceeded()
+                            .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedOperations)))
+                            .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxOperations)))
+                            .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
+                }
+                return true;
+            }
+        }
+
         if (!player.hasPermission("leafwe.bypass.limit") && volume > configManager.getMaxVolume()) {
             player.sendMessage(configManager.getMessage("volume-limit-exceeded")
                     .replaceText(config -> config.matchLiteral("%limit%").replacement(String.valueOf(configManager.getMaxVolume()))));
