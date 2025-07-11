@@ -20,7 +20,6 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     private boolean initialized = false;
     private final ConcurrentLinkedQueue<String> queryLog = new ConcurrentLinkedQueue<>();
 
-    // SQL Statements
     private static final String CREATE_DAILY_USAGE_TABLE = """
         CREATE TABLE IF NOT EXISTS daily_usage (
             player_id TEXT NOT NULL,
@@ -65,18 +64,14 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     public CompletableFuture<Boolean> initialize() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Database dosyasının klasörünü oluştur
                 File dbFile = new File(plugin.getDataFolder(), databaseFile);
                 dbFile.getParentFile().mkdirs();
 
-                // SQLite bağlantısını kur
                 String url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
                 connection = DriverManager.getConnection(url);
 
-                // SQLite optimizasyonlarını uygula
                 applySQLiteOptimizations();
 
-                // Tabloları oluştur
                 createTables();
 
                 initialized = true;
@@ -116,7 +111,6 @@ public class SQLiteDatabaseManager implements DatabaseManager {
             stmt.execute(CREATE_PLAYER_STATS_TABLE);
             stmt.execute(CREATE_SESSIONS_TABLE);
 
-            // Indexler oluştur
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_daily_usage_date ON daily_usage(date)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_daily_usage_player ON daily_usage(player_id)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_sessions_player ON sessions(player_id)");
@@ -127,18 +121,16 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     }
 
     @Override
-    public CompletableFuture<Boolean> shutdown() {
-        return CompletableFuture.supplyAsync(() -> {
+    public CompletableFuture<Void> shutdown() {
+        return CompletableFuture.runAsync(() -> {
             try {
                 if (connection != null && !connection.isClosed()) {
                     connection.close();
                     plugin.getLogger().info("SQLite database connection closed");
                 }
                 initialized = false;
-                return true;
             } catch (SQLException e) {
                 plugin.getLogger().warning("Error closing SQLite database: " + e.getMessage());
-                return false;
             }
         });
     }
@@ -184,7 +176,6 @@ public class SQLiteDatabaseManager implements DatabaseManager {
                                 rs.getLong("last_updated")
                         );
                     } else {
-                        // Kayıt yoksa default döndür
                         return new DailyUsageData(playerId, date, 0, 0, "default", System.currentTimeMillis());
                     }
                 }
@@ -298,7 +289,6 @@ public class SQLiteDatabaseManager implements DatabaseManager {
                                 rs.getLong("last_seen")
                         );
                     } else {
-                        // Yeni player için default stats
                         long now = System.currentTimeMillis();
                         return new PlayerStats(playerId, 0, 0, 0, "STONE", now, now);
                     }
@@ -512,7 +502,7 @@ public class SQLiteDatabaseManager implements DatabaseManager {
                         dailyUsageCount,
                         playerStatsCount,
                         sessionCount,
-                        0.0, // SQLite doesn't track response time
+                        0.0,
                         initialized ? "Connected" : "Disconnected"
                 );
             } catch (Exception e) {

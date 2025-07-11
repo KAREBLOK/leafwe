@@ -10,32 +10,25 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.List;
 import java.util.ArrayList;
 
-/**
- * Database performance and health monitoring system
- */
 public class DatabaseMonitor {
 
     private final LeafWE plugin;
     private final DatabaseManager databaseManager;
 
-    // Performance metrics
     private final AtomicLong totalQueries = new AtomicLong(0);
     private final AtomicLong totalQueryTime = new AtomicLong(0);
     private final AtomicInteger currentConnections = new AtomicInteger(0);
     private final AtomicLong slowQueries = new AtomicLong(0);
     private final AtomicLong failedQueries = new AtomicLong(0);
 
-    // Health monitoring
     private final ConcurrentHashMap<String, Long> lastQueryTimes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, QueryStats> queryStats = new ConcurrentHashMap<>();
     private final List<HealthCheckResult> healthHistory = new ArrayList<>();
 
-    // Configuration
     private final long SLOW_QUERY_THRESHOLD;
     private final long HEALTH_CHECK_INTERVAL;
     private final int MAX_HEALTH_HISTORY;
 
-    // Tasks
     private BukkitRunnable healthCheckTask;
     private BukkitRunnable metricsReportTask;
 
@@ -43,17 +36,13 @@ public class DatabaseMonitor {
         this.plugin = plugin;
         this.databaseManager = databaseManager;
 
-        // Load configuration
         this.SLOW_QUERY_THRESHOLD = plugin.getConfig().getLong("database.performance.slow-query-threshold", 1000);
-        this.HEALTH_CHECK_INTERVAL = plugin.getConfig().getLong("database.monitoring.health-check-interval", 300); // 5 minutes
+        this.HEALTH_CHECK_INTERVAL = plugin.getConfig().getLong("database.monitoring.health-check-interval", 300);
         this.MAX_HEALTH_HISTORY = plugin.getConfig().getInt("database.monitoring.max-health-history", 100);
 
         startMonitoring();
     }
 
-    /**
-     * Start monitoring tasks
-     */
     private void startMonitoring() {
         startHealthCheckTask();
         startMetricsReportTask();
@@ -62,16 +51,12 @@ public class DatabaseMonitor {
                 (HEALTH_CHECK_INTERVAL / 60) + " minutes");
     }
 
-    /**
-     * Record a query execution
-     */
     public void recordQuery(String queryType, long executionTime, boolean success) {
         totalQueries.incrementAndGet();
 
         if (success) {
             totalQueryTime.addAndGet(executionTime);
 
-            // Track slow queries
             if (executionTime > SLOW_QUERY_THRESHOLD) {
                 slowQueries.incrementAndGet();
 
@@ -80,7 +65,6 @@ public class DatabaseMonitor {
                 }
             }
 
-            // Update query stats
             queryStats.compute(queryType, (key, existing) -> {
                 if (existing == null) {
                     return new QueryStats(queryType, 1, executionTime, executionTime, executionTime);
@@ -101,9 +85,6 @@ public class DatabaseMonitor {
         lastQueryTimes.put(queryType, System.currentTimeMillis());
     }
 
-    /**
-     * Start health check monitoring
-     */
     private void startHealthCheckTask() {
         healthCheckTask = new BukkitRunnable() {
             @Override
@@ -112,14 +93,10 @@ public class DatabaseMonitor {
             }
         };
 
-        // Convert seconds to ticks (20 ticks = 1 second)
         long intervalTicks = HEALTH_CHECK_INTERVAL * 20L;
         healthCheckTask.runTaskTimerAsynchronously(plugin, intervalTicks, intervalTicks);
     }
 
-    /**
-     * Start metrics reporting task
-     */
     private void startMetricsReportTask() {
         if (!plugin.getConfig().getBoolean("database.monitoring.enable-periodic-reports", false)) {
             return;
@@ -132,14 +109,9 @@ public class DatabaseMonitor {
             }
         };
 
-        // Report every hour
         long reportInterval = plugin.getConfig().getLong("database.monitoring.report-interval", 3600) * 20L;
         metricsReportTask.runTaskTimerAsynchronously(plugin, reportInterval, reportInterval);
     }
-
-    /**
-     * Perform comprehensive health check
-     */
     private void performHealthCheck() {
         long startTime = System.currentTimeMillis();
 
@@ -149,7 +121,6 @@ public class DatabaseMonitor {
                 return CompletableFuture.completedFuture(false);
             }
 
-            // Test database stats query
             return databaseManager.getDatabaseStats().thenApply(stats -> {
                 boolean healthy = stats != null && "Connected".equals(stats.status);
                 String message = healthy ? "All systems operational" : "Database stats unavailable";
@@ -166,9 +137,6 @@ public class DatabaseMonitor {
         });
     }
 
-    /**
-     * Record health check result
-     */
     private void recordHealthCheck(boolean healthy, String message, long duration) {
         HealthCheckResult result = new HealthCheckResult(
                 System.currentTimeMillis(),
@@ -181,13 +149,11 @@ public class DatabaseMonitor {
         synchronized (healthHistory) {
             healthHistory.add(result);
 
-            // Keep only the last N results
             while (healthHistory.size() > MAX_HEALTH_HISTORY) {
                 healthHistory.remove(0);
             }
         }
 
-        // Log if unhealthy
         if (!healthy) {
             plugin.getLogger().warning("Database health check failed: " + message + " (took " + duration + "ms)");
         } else if (plugin.getConfig().getBoolean("database.monitoring.log-healthy-checks", false)) {
@@ -195,9 +161,6 @@ public class DatabaseMonitor {
         }
     }
 
-    /**
-     * Generate detailed metrics report
-     */
     private void generateMetricsReport() {
         DatabaseMetrics metrics = getCurrentMetrics();
 
@@ -211,7 +174,6 @@ public class DatabaseMonitor {
                 String.format("%.2f%%", metrics.failureRate) + ")");
         plugin.getLogger().info("Current Connections: " + metrics.currentConnections);
 
-        // Query type breakdown
         if (!queryStats.isEmpty()) {
             plugin.getLogger().info("--- Query Breakdown ---");
             queryStats.forEach((type, stats) -> {
@@ -223,9 +185,6 @@ public class DatabaseMonitor {
         plugin.getLogger().info("================================");
     }
 
-    /**
-     * Get current performance metrics
-     */
     public DatabaseMetrics getCurrentMetrics() {
         long queries = totalQueries.get();
         long queryTime = totalQueryTime.get();
@@ -248,26 +207,16 @@ public class DatabaseMonitor {
                 System.currentTimeMillis()
         );
     }
-
-    /**
-     * Get health check history
-     */
     public List<HealthCheckResult> getHealthHistory() {
         synchronized (healthHistory) {
             return new ArrayList<>(healthHistory);
         }
     }
 
-    /**
-     * Get query statistics
-     */
     public ConcurrentHashMap<String, QueryStats> getQueryStats() {
         return new ConcurrentHashMap<>(queryStats);
     }
 
-    /**
-     * Reset all metrics
-     */
     public void resetMetrics() {
         totalQueries.set(0);
         totalQueryTime.set(0);
@@ -283,29 +232,22 @@ public class DatabaseMonitor {
         plugin.getLogger().info("Database metrics reset");
     }
 
-    /**
-     * Check if database is currently healthy
-     */
     public boolean isHealthy() {
         synchronized (healthHistory) {
             if (healthHistory.isEmpty()) {
-                return true; // No data yet, assume healthy
+                return true;
             }
 
-            // Check last few health checks
             int recentChecks = Math.min(3, healthHistory.size());
             long healthyCount = healthHistory.subList(healthHistory.size() - recentChecks, healthHistory.size())
                     .stream()
                     .mapToLong(result -> result.healthy ? 1 : 0)
                     .sum();
 
-            return healthyCount >= (recentChecks / 2); // At least half should be healthy
+            return healthyCount >= (recentChecks / 2);
         }
     }
 
-    /**
-     * Get database uptime percentage (last 24 hours)
-     */
     public double getUptimePercentage() {
         long twentyFourHoursAgo = System.currentTimeMillis() - (24 * 60 * 60 * 1000);
 
@@ -315,7 +257,7 @@ public class DatabaseMonitor {
                     .toList();
 
             if (recentResults.isEmpty()) {
-                return 100.0; // No data, assume 100%
+                return 100.0;
             }
 
             long healthyCount = recentResults.stream()
@@ -326,16 +268,10 @@ public class DatabaseMonitor {
         }
     }
 
-    /**
-     * Update connection count
-     */
     public void setCurrentConnections(int connections) {
         currentConnections.set(connections);
     }
 
-    /**
-     * Shutdown monitoring
-     */
     public void shutdown() {
         if (healthCheckTask != null) {
             healthCheckTask.cancel();
@@ -345,7 +281,6 @@ public class DatabaseMonitor {
             metricsReportTask.cancel();
         }
 
-        // Generate final report
         if (plugin.getConfig().getBoolean("database.monitoring.final-report-on-shutdown", true)) {
             generateMetricsReport();
         }
@@ -353,7 +288,6 @@ public class DatabaseMonitor {
         plugin.getLogger().info("Database monitoring shutdown completed");
     }
 
-    // Data classes
     public static class DatabaseMetrics {
         public final long totalQueries;
         public final double averageQueryTime;

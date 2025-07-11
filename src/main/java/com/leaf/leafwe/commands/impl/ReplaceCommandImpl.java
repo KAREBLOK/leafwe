@@ -160,7 +160,6 @@ public class ReplaceCommandImpl implements CommandExecutor {
 
         long volume = blocksToChange.size();
 
-        // DailyLimitManager kontrolü - düzeltilmiş versiyon
         DailyLimitManager dailyLimitManager = plugin.getDailyLimitManager();
         if (dailyLimitManager != null) {
             DailyLimitManager.LimitCheckResult limitResult = dailyLimitManager.canPerformOperationDetailed(player, (int) volume);
@@ -169,13 +168,11 @@ public class ReplaceCommandImpl implements CommandExecutor {
                 DailyLimitManager.DailyUsageInfo usageInfo = dailyLimitManager.getUsageInfo(player);
 
                 if (limitResult.limitType == DailyLimitManager.LimitType.BLOCKS) {
-                    // Blok limiti aşıldı
                     player.sendMessage(configManager.getDailyLimitBlocksExceeded()
                             .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedBlocks)))
                             .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxBlocks)))
                             .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
                 } else if (limitResult.limitType == DailyLimitManager.LimitType.OPERATIONS) {
-                    // İşlem limiti aşıldı
                     player.sendMessage(configManager.getDailyLimitOperationsExceeded()
                             .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedOperations)))
                             .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxOperations)))

@@ -1,45 +1,51 @@
 package com.leaf.leafwe;
 
 import com.leaf.leafwe.commands.CommandManager;
+import com.leaf.leafwe.database.AsyncDatabaseManager;
+import com.leaf.leafwe.database.DatabaseFactory;
+import com.leaf.leafwe.database.DatabaseManager;
+import com.leaf.leafwe.database.migration.MigrationManager;
 import com.leaf.leafwe.registry.ManagerRegistry;
 import com.leaf.leafwe.utils.VersionManager;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.concurrent.CompletableFuture;
 
 public final class LeafWE extends JavaPlugin {
 
     private ManagerRegistry registry;
     private VersionManager versionManager;
     private CommandManager commandManager;
+    private boolean databaseEnabled = false;
 
     @Override
     public void onEnable() {
         try {
-            // Registry'yi başlat
             this.registry = ManagerRegistry.getInstance();
 
-            // Version manager'ı başlat
             this.versionManager = new VersionManager(this);
             registry.register(VersionManager.class, versionManager);
 
-            // Plugin bilgilerini logla
             versionManager.logPluginInfo();
 
-            // Manager'ları başlat
-            initializeManagers();
+            if (!versionManager.isServerSupported()) {
+                getLogger().warning("⚠️ Running on unsupported server version! Some features may not work correctly.");
+                getLogger().warning("Supported versions: 1.19.x, 1.20.x, 1.21.x");
+            }
 
-            // Command sistem'ini başlat
+            initializeCriticalManagers();
+
+            initializeDatabaseSystemAsync();
+
+            initializeOptionalManagers();
+
             this.commandManager = new CommandManager(this);
 
-            // Listener'ları kaydet
             registerListeners();
 
-            // WorldGuard hook'unu 1 tick sonra çalıştır
-            getServer().getScheduler().runTaskLater(this, () -> {
-                ProtectionManager protectionManager = registry.get(ProtectionManager.class);
-                if (protectionManager != null) {
-                    protectionManager.initializeHooksDelayed();
-                }
-            }, 1L);
+            getServer().getScheduler().runTaskLater(this, this::initializeDelayedHooks, 1L);
+
+            performHealthCheck();
 
             getLogger().info(versionManager.getEnableMessage());
 
@@ -50,8 +56,9 @@ public final class LeafWE extends JavaPlugin {
         }
     }
 
-    private void initializeManagers() {
-        // Tüm manager'ları başlat ve registry'ye kaydet
+    private void initializeCriticalManagers() {
+        getLogger().info("Initializing critical managers...");
+
         ConfigManager configManager = new ConfigManager(this);
         registry.register(ConfigManager.class, configManager);
 
@@ -76,134 +83,298 @@ public final class LeafWE extends JavaPlugin {
         GuiManager guiManager = new GuiManager(this, configManager);
         registry.register(GuiManager.class, guiManager);
 
-        ProtectionManager protectionManager = new ProtectionManager(this);
-        registry.register(ProtectionManager.class, protectionManager);
+        getLogger().info("✅ Critical managers initialized successfully");
+    }
 
-        DailyLimitManager dailyLimitManager = new DailyLimitManager(this, configManager);
-        registry.register(DailyLimitManager.class, dailyLimitManager);
+    private void initializeDatabaseSystemAsync() {
+        getLogger().info("Initializing database system...");
 
-        // Database Manager'ı registry'ye ekle (DailyLimitManager içinde oluşturuluyor)
-        registry.register(com.leaf.leafwe.database.DatabaseManager.class, dailyLimitManager.getDatabaseManager());
+        CompletableFuture.runAsync(() -> {
+            try {
+                DatabaseManager databaseManager = DatabaseFactory.createFromConfig(this);
+                registry.register(DatabaseManager.class, databaseManager);
+
+                databaseManager.initialize().thenCompose(success -> {
+                    if (success) {
+                        getLogger().info("✅ Database initialized successfully");
+                        databaseEnabled = true;
+
+                        return initializeMigrationSystem(databaseManager);
+                    } else {
+                        getLogger().severe("❌ Failed to initialize database! Some features will be disabled.");
+                        return CompletableFuture.completedFuture(false);
+                    }
+                }).thenCompose(migrationSuccess -> {
+                    if (migrationSuccess && databaseEnabled) {
+                        AsyncDatabaseManager asyncDbManager = new AsyncDatabaseManager(this, databaseManager);
+                        registry.register(AsyncDatabaseManager.class, asyncDbManager);
+
+                        DailyLimitManager dailyLimitManager = new DailyLimitManager(this, ManagerRegistry.config());
+                        registry.register(DailyLimitManager.class, dailyLimitManager);
+
+                        getLogger().info("✅ Database system fully initialized");
+                        return CompletableFuture.completedFuture(true);
+                    } else {
+                        getLogger().warning("⚠️ Database system partially initialized");
+                        return CompletableFuture.completedFuture(false);
+                    }
+                }).exceptionally(throwable -> {
+                    getLogger().severe("❌ Database system initialization error: " + throwable.getMessage());
+                    throwable.printStackTrace();
+                    return false;
+                });
+
+            } catch (Exception e) {
+                getLogger().severe("❌ Error setting up database system: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private CompletableFuture<Boolean> initializeMigrationSystem(DatabaseManager databaseManager) {
+        try {
+            MigrationManager migrationManager = new MigrationManager(this, databaseManager);
+            registry.register(MigrationManager.class, migrationManager);
+
+            return migrationManager.initialize().thenCompose(success -> {
+                if (success) {
+                    getLogger().info("✅ Migration system initialized");
+
+                    if (getConfig().getBoolean("database.auto-migrate", true)) {
+                        getLogger().info("Running automatic migrations...");
+                        return migrationManager.migrate().thenApply(result -> {
+                            if (result.success) {
+                                getLogger().info("✅ Migrations completed successfully");
+                                return true;
+                            } else {
+                                getLogger().warning("⚠️ Some migrations failed - check logs");
+                                return false;
+                            }
+                        });
+                    } else {
+                        getLogger().info("Auto-migration disabled");
+                        return CompletableFuture.completedFuture(true);
+                    }
+                } else {
+                    getLogger().severe("❌ Failed to initialize migration system");
+                    return CompletableFuture.completedFuture(false);
+                }
+            });
+
+        } catch (Exception e) {
+            getLogger().severe("❌ Error initializing migration system: " + e.getMessage());
+            e.printStackTrace();
+            return CompletableFuture.completedFuture(false);
+        }
+    }
+
+    private void initializeOptionalManagers() {
+        getLogger().info("Initializing optional managers...");
+
+        registry.registerLazy(ProtectionManager.class, () -> new ProtectionManager(this));
+
+        getLogger().info("✅ Optional managers registered");
     }
 
     private void registerListeners() {
         try {
             getServer().getPluginManager().registerEvents(
                     new WandListener(
-                            registry.get(SelectionManager.class),
-                            registry.get(ConfigManager.class),
-                            registry.get(SelectionVisualizer.class),
-                            registry.get(BlockstateManager.class),
-                            registry.get(ProtectionManager.class)
+                            ManagerRegistry.selection(),
+                            ManagerRegistry.config(),
+                            ManagerRegistry.visualizer(),
+                            ManagerRegistry.blockstate(),
+                            ManagerRegistry.protection()
                     ), this);
 
             getServer().getPluginManager().registerEvents(
                     new PlayerListener(
-                            registry.get(SelectionManager.class),
-                            registry.get(UndoManager.class),
-                            registry.get(PendingCommandManager.class),
-                            registry.get(SelectionVisualizer.class),
-                            registry.get(TaskManager.class),
-                            registry.get(BlockstateManager.class)
+                            ManagerRegistry.selection(),
+                            ManagerRegistry.undo(),
+                            ManagerRegistry.pending(),
+                            ManagerRegistry.visualizer(),
+                            ManagerRegistry.task(),
+                            ManagerRegistry.blockstate()
                     ), this);
 
             getServer().getPluginManager().registerEvents(
                     new GuiListener(
-                            registry.get(ConfigManager.class),
-                            registry.get(GuiManager.class)
+                            ManagerRegistry.config(),
+                            ManagerRegistry.gui()
                     ), this);
 
+            getLogger().info("✅ Event listeners registered successfully");
+
         } catch (Exception e) {
-            getLogger().severe("Failed to register listeners: " + e.getMessage());
+            getLogger().severe("❌ Failed to register listeners: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void initializeDelayedHooks() {
+        try {
+            ProtectionManager protectionManager = ManagerRegistry.protection();
+            if (protectionManager != null) {
+                protectionManager.initializeHooksDelayed();
+            }
+        } catch (Exception e) {
+            getLogger().warning("Error initializing delayed hooks: " + e.getMessage());
+        }
+    }
+
+    private void performHealthCheck() {
+        if (!registry.isHealthy()) {
+            getLogger().warning("⚠️ Some critical managers are missing! Plugin may not work correctly.");
+            getLogger().info(registry.getDebugInfo());
+        } else {
+            getLogger().info("✅ All critical managers initialized successfully");
+        }
+
+        getLogger().info("\n" + registry.getSystemStatus());
+
+        getServer().getScheduler().runTaskTimerAsynchronously(this, this::performPeriodicHealthCheck, 20L * 60L * 5L, 20L * 60L * 5L);
+    }
+
+    private void performPeriodicHealthCheck() {
+        try {
+            boolean coreHealthy = registry.isHealthy();
+            boolean dbHealthy = registry.isDatabaseHealthy();
+
+            if (!coreHealthy) {
+                getLogger().warning("⚠️ Core system health check failed!");
+            }
+
+            if (databaseEnabled && !dbHealthy) {
+                getLogger().warning("⚠️ Database connection lost! Attempting to reconnect...");
+
+                DatabaseManager dbManager = ManagerRegistry.database();
+                if (dbManager != null) {
+                    dbManager.testConnection().thenAccept(connected -> {
+                        if (connected) {
+                            getLogger().info("✅ Database reconnected successfully");
+                        } else {
+                            getLogger().severe("❌ Database reconnection failed");
+                        }
+                    });
+                }
+            }
+
+            Runtime runtime = Runtime.getRuntime();
+            long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+            long maxMemory = runtime.maxMemory();
+            double memoryPercent = (double) usedMemory / maxMemory * 100;
+
+            if (memoryPercent > 80) {
+                getLogger().warning("⚠️ High memory usage detected: " + String.format("%.1f%%", memoryPercent));
+            }
+
+        } catch (Exception e) {
+            getLogger().warning("Error during periodic health check: " + e.getMessage());
         }
     }
 
     @Override
     public void onDisable() {
         try {
-            // Cleanup tasks
-            TaskManager taskManager = registry != null ? registry.get(TaskManager.class) : null;
+            getLogger().info("Shutting down LeafWE...");
+
+            TaskManager taskManager = ManagerRegistry.task();
             if (taskManager != null) {
                 taskManager.cancelAllTasks();
+                getLogger().info("✅ All tasks cancelled");
             }
 
-            SelectionVisualizer selectionVisualizer = registry != null ? registry.get(SelectionVisualizer.class) : null;
+            SelectionVisualizer selectionVisualizer = ManagerRegistry.visualizer();
             if (selectionVisualizer != null) {
                 selectionVisualizer.shutdown();
+                getLogger().info("✅ Selection visualizer stopped");
             }
 
-            BlockstateManager blockstateManager = registry != null ? registry.get(BlockstateManager.class) : null;
+            BlockstateManager blockstateManager = ManagerRegistry.blockstate();
             if (blockstateManager != null) {
                 blockstateManager.cleanupAll();
+                getLogger().info("✅ Blockstate manager cleaned up");
             }
 
-            DailyLimitManager dailyLimitManager = registry != null ? registry.get(DailyLimitManager.class) : null;
+            AsyncDatabaseManager asyncDbManager = ManagerRegistry.asyncDatabase();
+            if (asyncDbManager != null) {
+                asyncDbManager.shutdown().join();
+                getLogger().info("✅ Async database manager shutdown");
+            }
+
+            DailyLimitManager dailyLimitManager = ManagerRegistry.dailyLimit();
             if (dailyLimitManager != null) {
                 dailyLimitManager.shutdown();
+                getLogger().info("✅ Daily limit manager shutdown");
             }
 
-            // Registry'yi temizle
+            DatabaseManager databaseManager = ManagerRegistry.database();
+            if (databaseManager != null) {
+                databaseManager.shutdown().join();
+                getLogger().info("✅ Database shutdown");
+            }
+
+            registry.shutdown();
             ManagerRegistry.reset();
 
-            getLogger().info(versionManager != null ? versionManager.getDisableMessage() : "LeafWE disabled.");
+            getLogger().info(versionManager != null ? versionManager.getDisableMessage() : "LeafWE disabled successfully.");
 
         } catch (Exception e) {
-            getLogger().severe("Error during plugin disable: " + e.getMessage());
+            getLogger().severe("❌ Error during plugin disable: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-    // Backward compatibility için getter methods (deprecated)
     @Deprecated
     public ConfigManager getConfigManager() {
-        return registry != null ? registry.get(ConfigManager.class) : null;
+        return ManagerRegistry.config();
     }
 
     @Deprecated
     public SelectionManager getSelectionManager() {
-        return registry != null ? registry.get(SelectionManager.class) : null;
+        return ManagerRegistry.selection();
     }
 
     @Deprecated
     public UndoManager getUndoManager() {
-        return registry != null ? registry.get(UndoManager.class) : null;
+        return ManagerRegistry.undo();
     }
 
     @Deprecated
     public PendingCommandManager getPendingCommandManager() {
-        return registry != null ? registry.get(PendingCommandManager.class) : null;
+        return ManagerRegistry.pending();
     }
 
     @Deprecated
     public SelectionVisualizer getSelectionVisualizer() {
-        return registry != null ? registry.get(SelectionVisualizer.class) : null;
+        return ManagerRegistry.visualizer();
     }
 
     @Deprecated
     public TaskManager getTaskManager() {
-        return registry != null ? registry.get(TaskManager.class) : null;
+        return ManagerRegistry.task();
     }
 
     @Deprecated
     public BlockstateManager getBlockstateManager() {
-        return registry != null ? registry.get(BlockstateManager.class) : null;
+        return ManagerRegistry.blockstate();
     }
 
     @Deprecated
     public GuiManager getGuiManager() {
-        return registry != null ? registry.get(GuiManager.class) : null;
+        return ManagerRegistry.gui();
     }
 
     @Deprecated
     public ProtectionManager getProtectionManager() {
-        return registry != null ? registry.get(ProtectionManager.class) : null;
+        return ManagerRegistry.protection();
     }
 
     @Deprecated
     public DailyLimitManager getDailyLimitManager() {
-        return registry != null ? registry.get(DailyLimitManager.class) : null;
+        return ManagerRegistry.dailyLimit();
     }
 
-    // Yeni accessor methods
     public ManagerRegistry getRegistry() {
         return registry;
     }
@@ -214,5 +385,17 @@ public final class LeafWE extends JavaPlugin {
 
     public CommandManager getCommandManager() {
         return commandManager;
+    }
+
+    public boolean isDatabaseEnabled() {
+        return databaseEnabled;
+    }
+
+    public String getSystemStatus() {
+        return registry.getSystemStatus();
+    }
+
+    public void forceHealthCheck() {
+        performHealthCheck();
     }
 }

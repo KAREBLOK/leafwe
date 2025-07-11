@@ -4,9 +4,6 @@ import com.leaf.leafwe.LeafWE;
 import com.leaf.leafwe.database.impl.SQLiteDatabaseManager;
 import com.leaf.leafwe.database.impl.MySQLDatabaseManager;
 
-/**
- * Factory for creating appropriate database manager instances
- */
 public class DatabaseFactory {
 
     public enum DatabaseType {
@@ -14,9 +11,6 @@ public class DatabaseFactory {
         MYSQL
     }
 
-    /**
-     * Create a database manager based on configuration
-     */
     public static DatabaseManager createDatabaseManager(LeafWE plugin, DatabaseType type) {
         switch (type) {
             case SQLITE:
@@ -28,9 +22,6 @@ public class DatabaseFactory {
         }
     }
 
-    /**
-     * Create database manager from config
-     */
     public static DatabaseManager createFromConfig(LeafWE plugin) {
         String databaseType = plugin.getConfig().getString("database.type", "sqlite").toLowerCase();
 
@@ -47,25 +38,16 @@ public class DatabaseFactory {
         }
     }
 
-    /**
-     * Get recommended database type based on server environment
-     */
     public static DatabaseType getRecommendedType(LeafWE plugin) {
-        // Check if this is a production environment
         boolean isProduction = plugin.getConfig().getBoolean("database.production-mode", false);
 
         if (isProduction) {
-            // Production environments should use MySQL
             return DatabaseType.MYSQL;
         } else {
-            // Development/small servers can use SQLite
             return DatabaseType.SQLITE;
         }
     }
 
-    /**
-     * Validate database configuration
-     */
     public static boolean validateConfig(LeafWE plugin, DatabaseType type) {
         switch (type) {
             case SQLITE:
@@ -78,13 +60,11 @@ public class DatabaseFactory {
     }
 
     private static boolean validateSQLiteConfig(LeafWE plugin) {
-        // SQLite sadece dosya yolu kontrolü gerekiyor
         String dbPath = plugin.getConfig().getString("database.sqlite.file", "data/leafwe.db");
         return dbPath != null && !dbPath.trim().isEmpty();
     }
 
     private static boolean validateMySQLConfig(LeafWE plugin) {
-        // MySQL için gerekli tüm parametreleri kontrol et
         String host = plugin.getConfig().getString("database.mysql.host");
         int port = plugin.getConfig().getInt("database.mysql.port", 3306);
         String database = plugin.getConfig().getString("database.mysql.database");
@@ -114,9 +94,6 @@ public class DatabaseFactory {
         return true;
     }
 
-    /**
-     * Get database connection URL for logging (without sensitive info)
-     */
     public static String getConnectionInfo(LeafWE plugin, DatabaseType type) {
         switch (type) {
             case SQLITE:

@@ -132,7 +132,6 @@ public class WallCommandImpl implements CommandExecutor {
             for (int x = minX; x <= maxX; x++) {
                 for (int y = minY; y <= maxY; y++) {
                     for (int z = minZ; z <= maxZ; z++) {
-                        // Wall logic: sadece kenar blokları
                         if (x == minX || x == maxX || z == minZ || z == maxZ) {
                             Location loc = new Location(world, x, y, z);
                             locationsToFill.add(loc);
@@ -153,7 +152,6 @@ public class WallCommandImpl implements CommandExecutor {
 
         long volume = locationsToFill.size();
 
-        // DailyLimitManager kontrolü - düzeltilmiş versiyon
         DailyLimitManager dailyLimitManager = plugin.getDailyLimitManager();
         if (dailyLimitManager != null) {
             DailyLimitManager.LimitCheckResult limitResult = dailyLimitManager.canPerformOperationDetailed(player, (int) volume);
@@ -162,13 +160,11 @@ public class WallCommandImpl implements CommandExecutor {
                 DailyLimitManager.DailyUsageInfo usageInfo = dailyLimitManager.getUsageInfo(player);
 
                 if (limitResult.limitType == DailyLimitManager.LimitType.BLOCKS) {
-                    // Blok limiti aşıldı
                     player.sendMessage(configManager.getDailyLimitBlocksExceeded()
                             .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedBlocks)))
                             .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxBlocks)))
                             .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
                 } else if (limitResult.limitType == DailyLimitManager.LimitType.OPERATIONS) {
-                    // İşlem limiti aşıldı
                     player.sendMessage(configManager.getDailyLimitOperationsExceeded()
                             .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedOperations)))
                             .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxOperations)))

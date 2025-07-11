@@ -4,64 +4,33 @@ import org.bukkit.entity.Player;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Database abstraction layer for LeafWE
- * Supports both SQLite and MySQL implementations
- */
 public interface DatabaseManager {
 
-    /**
-     * Initialize database connection and create tables
-     */
     CompletableFuture<Boolean> initialize();
 
-    /**
-     * Close database connections
-     */
     CompletableFuture<Void> shutdown();
 
-    /**
-     * Test database connection
-     */
     CompletableFuture<Boolean> testConnection();
 
-    /**
-     * Daily Limits Operations
-     */
     CompletableFuture<DailyUsageData> getDailyUsage(UUID playerId, String date);
     CompletableFuture<Boolean> updateDailyUsage(UUID playerId, String date, int blocksUsed, int operationsUsed, String group);
     CompletableFuture<Boolean> resetDailyUsage(UUID playerId, String date);
     CompletableFuture<Boolean> cleanupOldData(int daysToKeep);
 
-    /**
-     * Player Statistics Operations
-     */
     CompletableFuture<PlayerStats> getPlayerStats(UUID playerId);
     CompletableFuture<Boolean> updatePlayerStats(UUID playerId, String statType, long value);
     CompletableFuture<Boolean> incrementPlayerStat(UUID playerId, String statType, long increment);
 
-    /**
-     * Session Operations
-     */
     CompletableFuture<Boolean> recordSession(UUID playerId, String sessionType, long duration);
     CompletableFuture<SessionData> getLastSession(UUID playerId);
 
-    /**
-     * Batch Operations for Performance
-     */
     CompletableFuture<Boolean> batchUpdateDailyUsage(java.util.List<DailyUsageData> usageList);
     CompletableFuture<java.util.List<DailyUsageData>> getAllDailyUsage(String date);
 
-    /**
-     * Database Information
-     */
     String getDatabaseType();
     String getConnectionInfo();
     CompletableFuture<DatabaseStats> getDatabaseStats();
 
-    /**
-     * Data Classes
-     */
     class DailyUsageData {
         public final UUID playerId;
         public final String date;

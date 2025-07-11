@@ -49,7 +49,6 @@ public class LeafWETabCompleter implements TabCompleter {
 
     private List<String> handleSingleBlockCommand(String[] args, Player player) {
         if (args.length == 1) {
-            // İlk argüman: blok ismi
             return filterSuggestions(getAvailableBlocks(player), args[0]);
         }
         return new ArrayList<>();
@@ -57,10 +56,8 @@ public class LeafWETabCompleter implements TabCompleter {
 
     private List<String> handleReplaceCommand(String[] args, Player player) {
         if (args.length == 1) {
-            // İlk argüman: değiştirilecek blok
             return filterSuggestions(blockMaterials, args[0]);
         } else if (args.length == 2) {
-            // İkinci argüman: yeni blok (sadece envanterde olanlar)
             return filterSuggestions(getAvailableBlocks(player), args[1]);
         }
         return new ArrayList<>();
@@ -71,7 +68,6 @@ public class LeafWETabCompleter implements TabCompleter {
             List<String> subCommands = Arrays.asList("reload", "give", "undo", "confirm", "limits", "help");
             return filterSuggestions(subCommands, args[0]);
         } else if (args.length == 2 && "give".equalsIgnoreCase(args[0])) {
-            // /lwe give <player>
             return filterSuggestions(
                     player.getServer().getOnlinePlayers().stream()
                             .map(p -> p.getName())
@@ -85,7 +81,6 @@ public class LeafWETabCompleter implements TabCompleter {
     private List<String> getAvailableBlocks(Player player) {
         List<String> availableBlocks = new ArrayList<>();
 
-        // Player'ın envanterindeki blokları al
         for (ItemStack item : player.getInventory().getContents()) {
             if (item != null && item.getType().isBlock() &&
                     !configManager.getBlockedMaterials().contains(item.getType())) {
@@ -96,7 +91,6 @@ public class LeafWETabCompleter implements TabCompleter {
             }
         }
 
-        // Eğer boşsa, tüm blok türlerini göster (blacklist hariç)
         if (availableBlocks.isEmpty()) {
             return blockMaterials.stream()
                     .filter(material -> {
@@ -118,7 +112,7 @@ public class LeafWETabCompleter implements TabCompleter {
         return suggestions.stream()
                 .filter(suggestion -> suggestion.toLowerCase().startsWith(lowerInput))
                 .sorted()
-                .limit(20) // Max 20 suggestion göster
+                .limit(20)
                 .collect(Collectors.toList());
     }
 

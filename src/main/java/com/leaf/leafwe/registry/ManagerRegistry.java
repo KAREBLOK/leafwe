@@ -1,21 +1,24 @@
 package com.leaf.leafwe.registry;
 
 import com.leaf.leafwe.*;
+import com.leaf.leafwe.database.AsyncDatabaseManager;
+import com.leaf.leafwe.database.DatabaseManager;
+import com.leaf.leafwe.database.migration.MigrationManager;
 import com.leaf.leafwe.utils.VersionManager;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
-/**
- * Tüm manager'ları merkezi olarak tutan singleton registry
- */
 public class ManagerRegistry {
 
     private static ManagerRegistry instance;
     private final Map<Class<?>, Object> managers;
+    private final Map<Class<?>, Supplier<?>> lazySuppliers;
 
     private ManagerRegistry() {
         this.managers = new HashMap<>();
+        this.lazySuppliers = new HashMap<>();
     }
 
     public static ManagerRegistry getInstance() {
@@ -25,114 +28,220 @@ public class ManagerRegistry {
         return instance;
     }
 
-    /**
-     * Manager kaydet
-     */
     public <T> void register(Class<T> clazz, T manager) {
         managers.put(clazz, manager);
+        lazySuppliers.remove(clazz);
     }
 
-    /**
-     * Manager al
-     */
+    public <T> void registerLazy(Class<T> clazz, Supplier<T> supplier) {
+        lazySuppliers.put(clazz, supplier);
+    }
+
     @SuppressWarnings("unchecked")
     public <T> T get(Class<T> clazz) {
-        return (T) managers.get(clazz);
+        Object manager = managers.get(clazz);
+        if (manager != null) {
+            return (T) manager;
+        }
+
+        Supplier<?> supplier = lazySuppliers.get(clazz);
+        if (supplier != null) {
+            manager = supplier.get();
+            if (manager != null) {
+                managers.put(clazz, manager);
+                lazySuppliers.remove(clazz);
+            }
+            return (T) manager;
+        }
+
+        return null;
     }
 
-    /**
-     * Manager var mı kontrol et
-     */
     public boolean has(Class<?> clazz) {
-        return managers.containsKey(clazz);
+        return managers.containsKey(clazz) || lazySuppliers.containsKey(clazz);
     }
 
-    /**
-     * Manager kaldır
-     */
     public void unregister(Class<?> clazz) {
         managers.remove(clazz);
+        lazySuppliers.remove(clazz);
     }
 
-    /**
-     * Tüm manager'ları temizle
-     */
     public void clear() {
         managers.clear();
+        lazySuppliers.clear();
     }
 
-    /**
-     * Registry'yi yeniden başlat
-     */
+    public void shutdown() {
+        for (Object manager : managers.values()) {
+            if (manager instanceof AutoCloseable) {
+                try {
+                    ((AutoCloseable) manager).close();
+                } catch (Exception e) {
+                    // Log but continue shutdown
+                    System.err.println("Error shutting down manager: " + manager.getClass().getSimpleName() + " - " + e.getMessage());
+                }
+            }
+        }
+        clear();
+    }
+
     public static void reset() {
         if (instance != null) {
-            instance.clear();
+            instance.shutdown();
             instance = null;
         }
     }
 
-    // Convenience methods
     public static ConfigManager config() {
-        return getInstance().get(ConfigManager.class);
+        ConfigManager manager = getInstance().get(ConfigManager.class);
+        if (manager == null) {
+            throw new IllegalStateException("ConfigManager not registered!");
+        }
+        return manager;
     }
 
     public static SelectionManager selection() {
-        return getInstance().get(SelectionManager.class);
+        SelectionManager manager = getInstance().get(SelectionManager.class);
+        if (manager == null) {
+            throw new IllegalStateException("SelectionManager not registered!");
+        }
+        return manager;
     }
 
     public static UndoManager undo() {
-        return getInstance().get(UndoManager.class);
+        UndoManager manager = getInstance().get(UndoManager.class);
+        if (manager == null) {
+            throw new IllegalStateException("UndoManager not registered!");
+        }
+        return manager;
     }
 
     public static TaskManager task() {
-        return getInstance().get(TaskManager.class);
+        TaskManager manager = getInstance().get(TaskManager.class);
+        if (manager == null) {
+            throw new IllegalStateException("TaskManager not registered!");
+        }
+        return manager;
     }
 
     public static GuiManager gui() {
-        return getInstance().get(GuiManager.class);
+        GuiManager manager = getInstance().get(GuiManager.class);
+        if (manager == null) {
+            throw new IllegalStateException("GuiManager not registered!");
+        }
+        return manager;
     }
 
     public static ProtectionManager protection() {
-        return getInstance().get(ProtectionManager.class);
+        return getInstance().get(ProtectionManager.class); // Nullable - optional dependency
     }
 
     public static DailyLimitManager dailyLimit() {
-        return getInstance().get(DailyLimitManager.class);
+        return getInstance().get(DailyLimitManager.class); // Nullable - optional feature
     }
 
     public static SelectionVisualizer visualizer() {
-        return getInstance().get(SelectionVisualizer.class);
+        SelectionVisualizer manager = getInstance().get(SelectionVisualizer.class);
+        if (manager == null) {
+            throw new IllegalStateException("SelectionVisualizer not registered!");
+        }
+        return manager;
     }
 
     public static BlockstateManager blockstate() {
-        return getInstance().get(BlockstateManager.class);
+        BlockstateManager manager = getInstance().get(BlockstateManager.class);
+        if (manager == null) {
+            throw new IllegalStateException("BlockstateManager not registered!");
+        }
+        return manager;
     }
 
     public static PendingCommandManager pending() {
-        return getInstance().get(PendingCommandManager.class);
+        PendingCommandManager manager = getInstance().get(PendingCommandManager.class);
+        if (manager == null) {
+            throw new IllegalStateException("PendingCommandManager not registered!");
+        }
+        return manager;
     }
 
     public static VersionManager version() {
-        return getInstance().get(VersionManager.class);
+        VersionManager manager = getInstance().get(VersionManager.class);
+        if (manager == null) {
+            throw new IllegalStateException("VersionManager not registered!");
+        }
+        return manager;
     }
 
-    public static com.leaf.leafwe.database.DatabaseManager database() {
-        return getInstance().get(com.leaf.leafwe.database.DatabaseManager.class);
+    public static DatabaseManager database() {
+        return getInstance().get(DatabaseManager.class); // Nullable - optional feature
     }
 
-    public static com.leaf.leafwe.database.DatabaseMonitor databaseMonitor() {
-        return getInstance().get(com.leaf.leafwe.database.DatabaseMonitor.class);
+    public static AsyncDatabaseManager asyncDatabase() {
+        return getInstance().get(AsyncDatabaseManager.class); // Nullable - optional feature
     }
 
-    /**
-     * Debug bilgisi
-     */
+    public static MigrationManager migration() {
+        return getInstance().get(MigrationManager.class); // Nullable - optional feature
+    }
+
+    public boolean isHealthy() {
+        Class<?>[] criticalManagers = {
+                ConfigManager.class,
+                SelectionManager.class,
+                UndoManager.class,
+                TaskManager.class,
+                GuiManager.class,
+                SelectionVisualizer.class,
+                BlockstateManager.class,
+                PendingCommandManager.class,
+                VersionManager.class
+        };
+
+        for (Class<?> clazz : criticalManagers) {
+            if (!has(clazz)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean isDatabaseHealthy() {
+        DatabaseManager dbManager = get(DatabaseManager.class);
+        if (dbManager == null) {
+            return false;
+        }
+
+        try {
+            return dbManager.testConnection().join();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public String getSystemStatus() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== LeafWE System Status ===\n");
+        sb.append("Core Health: ").append(isHealthy() ? "✅ HEALTHY" : "❌ UNHEALTHY").append("\n");
+        sb.append("Database Health: ").append(isDatabaseHealthy() ? "✅ CONNECTED" : "❌ DISCONNECTED").append("\n");
+        sb.append("Managers: ").append(managers.size()).append(" loaded\n");
+
+        return sb.toString();
+    }
+
     public String getDebugInfo() {
         StringBuilder sb = new StringBuilder();
         sb.append("Registered Managers (").append(managers.size()).append("):\n");
 
         for (Class<?> clazz : managers.keySet()) {
             sb.append("  - ").append(clazz.getSimpleName()).append("\n");
+        }
+
+        if (!lazySuppliers.isEmpty()) {
+            sb.append("Lazy Suppliers (").append(lazySuppliers.size()).append("):\n");
+            for (Class<?> clazz : lazySuppliers.keySet()) {
+                sb.append("  - ").append(clazz.getSimpleName()).append(" [LAZY]\n");
+            }
         }
 
         return sb.toString();

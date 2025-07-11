@@ -13,34 +13,16 @@ public abstract class BaseCommand {
         this.plugin = plugin;
     }
 
-    /**
-     * Command'ı çalıştır
-     */
     public abstract boolean execute(CommandSender sender, Command command, String label, String[] args);
 
-    /**
-     * Command'ın açıklaması
-     */
     public abstract String getDescription();
 
-    /**
-     * Command'ın kullanımı
-     */
     public abstract String getUsage();
 
-    /**
-     * Gerekli permission
-     */
     public abstract String getPermission();
 
-    /**
-     * Sadece player'lar kullanabilir mi?
-     */
     public abstract boolean isPlayerOnly();
 
-    /**
-     * Player kontrolü yap
-     */
     protected boolean checkPlayer(CommandSender sender) {
         if (isPlayerOnly() && !(sender instanceof Player)) {
             sender.sendMessage(plugin.getConfigManager().getMessage("players-only"));
@@ -49,9 +31,6 @@ public abstract class BaseCommand {
         return true;
     }
 
-    /**
-     * Permission kontrolü yap
-     */
     protected boolean checkPermission(CommandSender sender) {
         String permission = getPermission();
         if (permission != null && !permission.isEmpty() && !sender.hasPermission(permission)) {
@@ -61,16 +40,10 @@ public abstract class BaseCommand {
         return true;
     }
 
-    /**
-     * Temel kontrolleri yap
-     */
     protected boolean performBasicChecks(CommandSender sender) {
         return checkPlayer(sender) && checkPermission(sender);
     }
 
-    /**
-     * Player cast yap (güvenli)
-     */
     protected Player getPlayer(CommandSender sender) {
         if (sender instanceof Player) {
             return (Player) sender;
@@ -78,9 +51,6 @@ public abstract class BaseCommand {
         return null;
     }
 
-    /**
-     * Help mesajı göster
-     */
     protected void showHelp(CommandSender sender) {
         sender.sendMessage("§7Usage: §f" + getUsage());
         sender.sendMessage("§7Description: §f" + getDescription());

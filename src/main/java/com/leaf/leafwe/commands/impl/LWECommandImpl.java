@@ -1,7 +1,9 @@
 package com.leaf.leafwe.commands.impl;
 
 import com.leaf.leafwe.*;
+import com.leaf.leafwe.registry.ManagerRegistry;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -29,7 +31,7 @@ public class LWECommandImpl implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(configManager.getMessage("help-message"));
+            showMainHelp(sender);
             return true;
         }
 
@@ -46,9 +48,15 @@ public class LWECommandImpl implements CommandExecutor {
                 return handleConfirm(sender);
             case "limits":
                 return handleLimits(sender);
+            case "status":
+                return handleStatus(sender);
+            case "migration":
+                return handleMigration(sender, args);
+            case "debug":
+                return handleDebug(sender);
             case "help":
             default:
-                sender.sendMessage(configManager.getMessage("help-message"));
+                showMainHelp(sender);
                 return true;
         }
     }
@@ -60,10 +68,14 @@ public class LWECommandImpl implements CommandExecutor {
         }
 
         try {
+            sender.sendMessage(Component.text("Reloading LeafWE configuration...", NamedTextColor.YELLOW));
+
             configManager.loadConfig();
-            sender.sendMessage(configManager.getMessage("reload-successful"));
+            sender.sendMessage(Component.text("✅ Configuration reloaded successfully!", NamedTextColor.GREEN));
+
         } catch (Exception e) {
-            sender.sendMessage(Component.text("§cReload failed: " + e.getMessage()));
+            sender.sendMessage(Component.text("❌ Reload failed: " + e.getMessage(), NamedTextColor.RED));
+            plugin.getLogger().severe("Config reload error: " + e.getMessage());
         }
         return true;
     }
@@ -75,13 +87,13 @@ public class LWECommandImpl implements CommandExecutor {
         }
 
         if (args.length != 2) {
-            sender.sendMessage(configManager.getMessage("invalid-usage-give"));
+            sender.sendMessage(Component.text("Usage: /lwe give <player>", NamedTextColor.RED));
             return true;
         }
 
         String targetName = args[1].trim();
         if (targetName.isEmpty()) {
-            sender.sendMessage(configManager.getMessage("invalid-usage-give"));
+            sender.sendMessage(Component.text("Invalid player name!", NamedTextColor.RED));
             return true;
         }
 
@@ -188,6 +200,109 @@ public class LWECommandImpl implements CommandExecutor {
         }
 
         return true;
+    }
+
+    private boolean handleStatus(CommandSender sender) {
+        if (!sender.hasPermission("leafwe.admin.status")) {
+            sender.sendMessage(configManager.getMessage("no-permission"));
+            return true;
+        }
+
+        sender.sendMessage(Component.text("=== LeafWE System Status ===", NamedTextColor.GOLD));
+
+        sender.sendMessage(Component.text("Version: " + plugin.getVersionManager().getFullInfo(), NamedTextColor.AQUA));
+        sender.sendMessage(Component.text("Server Support: " +
+                        (plugin.getVersionManager().isServerSupported() ? "✅ SUPPORTED" : "⚠️ UNSUPPORTED"),
+                plugin.getVersionManager().isServerSupported() ? NamedTextColor.GREEN : NamedTextColor.YELLOW));
+
+
+        ManagerRegistry registry = ManagerRegistry.getInstance();
+        sender.sendMessage(Component.text("Core System: " +
+                        (registry.isHealthy() ? "✅ HEALTHY" : "❌ UNHEALTHY"),
+                registry.isHealthy() ? NamedTextColor.GREEN : NamedTextColor.RED));
+
+        boolean dbHealthy = registry.isDatabaseHealthy();
+        sender.sendMessage(Component.text("Database: " +
+                        (dbHealthy ? "✅ CONNECTED" : "❌ DISCONNECTED"),
+                dbHealthy ? NamedTextColor.GREEN : NamedTextColor.RED));
+
+        if (dbHealthy && ManagerRegistry.database() != null) {
+            sender.sendMessage(Component.text("Database Type: " + ManagerRegistry.database().getDatabaseType(), NamedTextColor.GRAY));
+        }
+
+        TaskManager taskManager = plugin.getTaskManager();
+        if (taskManager != null) {
+            sender.sendMessage(Component.text("Active Tasks: " + taskManager.getActiveTaskCount(), NamedTextColor.GRAY));
+        }
+
+        return true;
+    }
+
+    private boolean handleMigration(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("leafwe.admin.migration")) {
+            sender.sendMessage(configManager.getMessage("no-permission"));
+            return true;
+        }
+
+        if (args.length < 2) {
+            showMigrationHelp(sender);
+            return true;
+        }
+
+        sender.sendMessage(Component.text("Migration system available! Use:", NamedTextColor.YELLOW));
+        showMigrationHelp(sender);
+        return true;
+    }
+
+    private boolean handleDebug(CommandSender sender) {
+        if (!sender.hasPermission("leafwe.admin.debug")) {
+            sender.sendMessage(configManager.getMessage("no-permission"));
+            return true;
+        }
+
+        sender.sendMessage(Component.text("=== LeafWE Debug Information ===", NamedTextColor.GOLD));
+
+        sender.sendMessage(Component.text(ManagerRegistry.getInstance().getDebugInfo(), NamedTextColor.GRAY));
+
+        sender.sendMessage(Component.text("System Info:", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text(plugin.getVersionManager().getDebugInfo(), NamedTextColor.GRAY));
+
+        return true;
+    }
+
+    private void showMainHelp(CommandSender sender) {
+        sender.sendMessage(Component.text("=== LeafWE Commands ===", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("/lwe give <player>", NamedTextColor.AQUA)
+                .append(Component.text(" - Give construction wand", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/lwe undo", NamedTextColor.AQUA)
+                .append(Component.text(" - Undo last operation", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/lwe confirm", NamedTextColor.AQUA)
+                .append(Component.text(" - Confirm pending operation", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/lwe limits", NamedTextColor.AQUA)
+                .append(Component.text(" - Show daily usage limits", NamedTextColor.GRAY)));
+
+        if (sender.hasPermission("leafwe.admin")) {
+            sender.sendMessage(Component.text("", NamedTextColor.WHITE));
+            sender.sendMessage(Component.text("=== Admin Commands ===", NamedTextColor.RED));
+            sender.sendMessage(Component.text("/lwe reload", NamedTextColor.AQUA)
+                    .append(Component.text(" - Reload configuration", NamedTextColor.GRAY)));
+            sender.sendMessage(Component.text("/lwe status", NamedTextColor.AQUA)
+                    .append(Component.text(" - Show system status", NamedTextColor.GRAY)));
+            sender.sendMessage(Component.text("/lwe migration <cmd>", NamedTextColor.AQUA)
+                    .append(Component.text(" - Database migration commands", NamedTextColor.GRAY)));
+            sender.sendMessage(Component.text("/lwe debug", NamedTextColor.AQUA)
+                    .append(Component.text(" - Show debug information", NamedTextColor.GRAY)));
+        }
+    }
+
+    private void showMigrationHelp(CommandSender sender) {
+        sender.sendMessage(Component.text("=== Migration Commands ===", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("/lwe migration status", NamedTextColor.AQUA)
+                .append(Component.text(" - Show migration status", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/lwe migration migrate", NamedTextColor.AQUA)
+                .append(Component.text(" - Run pending migrations", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.text("/lwe migration history", NamedTextColor.AQUA)
+                .append(Component.text(" - Show migration history", NamedTextColor.GRAY)));
     }
 
     private ItemStack createWand() {

@@ -21,7 +21,6 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         this.plugin = plugin;
         this.tabCompleter = new LeafWETabCompleter(plugin.getConfigManager());
 
-        // Command'ları initialize et
         this.setCommand = new CommandExecutorWrapper(new com.leaf.leafwe.commands.impl.SetCommandImpl(plugin));
         this.wallCommand = new com.leaf.leafwe.commands.impl.WallCommandImpl(
                 plugin,
@@ -57,7 +56,6 @@ public class CommandManager implements CommandExecutor, TabCompleter {
     }
 
     private void registerBukkitCommands() {
-        // Bukkit command'larını kaydet
         String[] commandNames = {"set", "wall", "replace", "lwe"};
 
         for (String commandName : commandNames) {
@@ -76,16 +74,12 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         try {
             switch (commandName) {
                 case "set":
-                    // Yeni BaseCommand sistemi
                     return setCommand.onCommand(sender, command, label, args);
                 case "wall":
-                    // Eski sistem
                     return wallCommand.onCommand(sender, command, label, args);
                 case "replace":
-                    // Eski sistem
                     return replaceCommand.onCommand(sender, command, label, args);
                 case "lwe":
-                    // Eski sistem
                     return lweCommand.onCommand(sender, command, label, args);
                 default:
                     sender.sendMessage("§cUnknown command: " + commandName);
@@ -104,9 +98,6 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         return tabCompleter.onTabComplete(sender, command, alias, args);
     }
 
-    /**
-     * BaseCommand'ı CommandExecutor'a çeviren wrapper
-     */
     private static class CommandExecutorWrapper implements CommandExecutor {
         private final com.leaf.leafwe.commands.BaseCommand baseCommand;
 

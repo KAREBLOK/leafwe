@@ -1,104 +1,228 @@
-# LeafWE Plugin Settings v4.0.3
+# ===========================================
+# LeafWE Database Configuration
+# ===========================================
 
-# General settings for plugin behavior.
+database:
+  # Database type: "sqlite" or "mysql"
+  type: "sqlite"
+
+  # Enable automatic migrations on startup
+  auto-migrate: true
+
+  # Production mode (affects default database recommendations)
+  production-mode: false
+
+  # SQLite Configuration
+  sqlite:
+    # Database file path (relative to plugin folder)
+    file: "data/leafwe.db"
+
+    # SQLite optimization settings
+    journal-mode: "WAL"      # WAL, DELETE, TRUNCATE, MEMORY, OFF
+    synchronous: "NORMAL"    # OFF, NORMAL, FULL, EXTRA
+    cache-size: 2000         # Number of pages to cache
+    temp-store: "MEMORY"     # FILE, MEMORY
+
+  # MySQL Configuration
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "leafwe"
+    username: "leafwe_user"
+    password: "your_secure_password"
+
+    # SSL Configuration
+    use-ssl: false
+    verify-server-certificate: false
+    character-encoding: "utf8mb4"
+
+    # MySQL optimization properties
+    properties:
+      cachePrepStmts: true
+      prepStmtCacheSize: 250
+      prepStmtCacheSqlLimit: 2048
+      useServerPrepStmts: true
+      useLocalSessionState: true
+      rewriteBatchedStatements: true
+      cacheResultSetMetadata: true
+      cacheServerConfiguration: true
+      elideSetAutoCommits: true
+      maintainTimeStats: false
+
+  # Connection Pool Settings
+  connection-pool:
+    maximum-pool-size: 10
+    minimum-idle: 2
+    connection-timeout: 30000    # 30 seconds
+    idle-timeout: 600000         # 10 minutes
+    max-lifetime: 1800000        # 30 minutes
+    leak-detection-threshold: 60000  # 1 minute
+
+  # Async Operations Configuration
+  async:
+    # Thread pool sizes
+    read-threads: 4
+    write-threads: 2
+    batch-threads: 1
+
+    # Connection management
+    max-connections: 20
+    connection-timeout: 10000    # 10 seconds
+    shutdown-timeout: 30         # 30 seconds
+
+    # Retry configuration
+    write-retries: 3
+
+    # Batch processing
+    batch-size: 100
+    batch-flush-interval: 5000   # 5 seconds
+    queue-size: 1000
+
+    # Circuit breaker
+    circuit-breaker-threshold: 10
+    circuit-breaker-timeout: 30000  # 30 seconds
+
+  # Performance Monitoring
+  performance:
+    # Log slow queries (in milliseconds)
+    slow-query-threshold: 1000
+    log-slow-queries: true
+    log-queries: false  # Enable for debugging only
+
+  # Database Monitoring
+  monitoring:
+    # Health check interval (in seconds)
+    health-check-interval: 300  # 5 minutes
+
+    # Enable periodic reports
+    enable-periodic-reports: false
+    report-interval: 3600       # 1 hour
+
+    # Log healthy checks (disable for production)
+    log-healthy-checks: false
+
+    # Generate final report on shutdown
+    final-report-on-shutdown: true
+
+    # Maximum health history to keep
+    max-health-history: 100
+
+  # Data Retention
+  data-retention:
+    # Enable automatic cleanup
+    auto-cleanup: true
+
+    # Days to keep data
+    daily-usage-days: 30
+    session-days: 7
+
+    # Cleanup interval (in hours)
+    cleanup-interval: 24
+
+# ===========================================
+# Enhanced Daily Limits Configuration
+# ===========================================
+
+daily-limits:
+  enabled: false
+
+  # Time when limits reset (24-hour format)
+  reset-time: "00:00"
+
+  # Permission groups with different limits
+  groups:
+    default:
+      max-blocks-per-day: 1000
+      max-operations-per-day: 10
+
+    vip:
+      max-blocks-per-day: 5000
+      max-operations-per-day: 25
+
+    premium:
+      max-blocks-per-day: 15000
+      max-operations-per-day: 50
+
+    admin:
+      max-blocks-per-day: -1    # -1 = unlimited
+      max-operations-per-day: -1
+
+# ===========================================
+# System Settings
+# ===========================================
+
 settings:
-  # Language file to use (e.g., 'en' for messages_en.yml, 'tr' for messages_tr.yml).
-  language: 'en'
-  # Delay in ticks between each block placement (Lower = Faster, Higher = Slower). 20 ticks = 1 second.
-  speed: 2
-  # Particle effect to show when a block is placed. Set to 'NONE' to disable.
-  # Valid particle names: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Particle.html
-  placement-particle: 'WAX_ON'
-  # Enable selection visualization with particles (true/false).
-  selection-visualizer: true
-  # Require confirmation for operations affecting more blocks than this value. Set to 0 to disable.
-  confirmation-limit: 5000
-  # The maximum number of undo actions a player can have stored.
-  max-undo: 10
-  # The maximum volume of blocks a non-admin player can affect at once.
+  # Basic settings
+  speed: 2                     # 1-20 (blocks per tick)
+  language: "en"
   max-volume: 50000
-  # Selection visualization timeout (seconds)
-  selection-timeout: 180 # 3 minutes (default)
+  confirmation-limit: 5000
+  max-undo: 10
 
+  # Selection visualizer
+  selection-visualizer: true
+  selection-timeout: 300       # 5 minutes
 
-  # Settings for the success effect after an operation is complete.
+  # Effects and sounds
+  placement-particle: "WAX_ON"
   success-effect:
     enabled: true
-    sound: 'ENTITY_PLAYER_LEVELUP'
+    sound: "ENTITY_PLAYER_LEVELUP"
 
-  # Settings for the Pipette (Blockstate Copy) Tool
+  # Pipette tool (copy block data)
   pipette-tool:
     enabled: true
-    copy-sound: 'ENTITY_ITEM_PICKUP'
-    paste-sound: 'BLOCK_NOTE_BLOCK_PLING'
+    copy-sound: "ENTITY_ITEM_PICKUP"
+    paste-sound: "BLOCK_NOTE_BLOCK_PLING"
 
-  # Settings for the worker Armor Stand animation.
+  # Worker animation
   worker-animation:
     enabled: true
     show-name: true
-    # %player% will be replaced with the player's name.
-    name-template: '&a[Worker] %player%'
-    # Determines how far above the block the worker stands. (1.5 is ideal)
-    y-offset: 1.5
-    # The color of the leather armor in R,G,B format.
-    armor-color: '0,255,255'
+    name-template: "&a[Worker] %player%"
+    y-offset: 0.5
+    armor-color: "0,255,255"  # RGB format
 
-# Properties of the selection wand.
-wand-tool:
-  material: 'BLAZE_ROD'
-  name: '&6Construction Rod'
-  lore:
-    - '&eUse this to select regions.'
-    - '&7Left-Click: Set Position 1'
-    - '&7Right-Click: Set Position 2'
-    - '&7Crouch + Right-Click: Copy Block State'
-
-# A list of materials that cannot be used with construction commands.
-blocked-materials:
-  - 'BEDROCK'
-  - 'COMMAND_BLOCK'
-  - 'TNT'
-  - 'AIR'
-
-# LeafWE commands will be disabled in these worlds.
+# Disabled worlds (world names, case sensitive)
 disabled-worlds:
-  - 'world_lobby'
-  - 'arena'
+  - "world_nether"
+  - "world_the_end"
 
-# Settings for the GUIs
+# Blocked materials (materials that cannot be used)
+blocked-materials:
+  - "BEDROCK"
+  - "BARRIER"
+  - "COMMAND_BLOCK"
+  - "CHAIN_COMMAND_BLOCK"
+  - "REPEATING_COMMAND_BLOCK"
+  - "STRUCTURE_BLOCK"
+
+# ===========================================
+# Wand Tool Configuration
+# ===========================================
+
+wand-tool:
+  material: "BLAZE_ROD"
+  name: "&6Construction Rod"
+  lore:
+    - "&7Left click: Set position 1"
+    - "&7Right click: Set position 2"
+    - "&7Shift + Right click: Copy block data"
+    - ""
+    - "&eLeafWE Construction Tool"
+
+# ===========================================
+# GUI Configuration
+# ===========================================
+
 block-selector-gui:
-  title: '&1Select a Block'
+  title: "&1Select a Block"
 
 replace-gui:
-  title: '&1Block Replace Menu'
-  confirm-button-name: '&a&lCONFIRM & REPLACE'
+  title: "&1Block Replace Menu"
+  confirm-button-name: "&a&lCONFIRM & REPLACE"
   confirm-button-lore:
-    - '&7Replaces the block in the left slot'
-    - '&7with the block in the right slot.'
-
-# Daily Limits System
-daily-limits:
-  enabled: false  # Set to true to enable daily limits
-  reset-time: "00:00"  # Daily reset time (24-hour format)
-  groups:
-    default:
-      max-blocks-per-day: 1000      # Maximum blocks per day
-      max-operations-per-day: 10    # Maximum operations per day
-    vip:
-      max-blocks-per-day: 5000
-      max-operations-per-day: 50
-    premium:
-      max-blocks-per-day: 15000
-      max-operations-per-day: 100
-    admin:
-      max-blocks-per-day: -1        # -1 = unlimited
-      max-operations-per-day: -1    # -1 = unlimited
-
-# Permission Groups:
-# leafwe.limit.group.default  - Default group (everyone has this)
-# leafwe.limit.group.vip      - VIP group
-# leafwe.limit.group.premium  - Premium group
-# leafwe.limit.group.admin    - Admin group (unlimited)
-
-# Players automatically get the highest permission group they have
-# Example: If player has both "vip" and "premium" permissions, they get "premium" limits
+    - "&7Click to start the replacement"
+    - "&7operation with selected blocks."
+    - ""
+    - "&c⚠ This action cannot be undone!"

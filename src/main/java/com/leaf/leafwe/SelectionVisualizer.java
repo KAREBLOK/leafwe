@@ -46,7 +46,6 @@ public class SelectionVisualizer {
                         return;
                     }
 
-                    // Her 60 tick'te bir (3 saniye) timeout kontrolü yap
                     if (tickCount % ACTIVITY_CHECK_INTERVAL == 0) {
                         if (isTimedOut(player)) {
                             player.sendActionBar(plugin.getConfigManager().getMessage("selection-visualizer-timeout"));
@@ -195,7 +194,6 @@ public class SelectionVisualizer {
 
             double step = calculateStep(minX, minY, minZ, maxX, maxY, maxZ);
 
-            // X ekseni kenarları
             for (double x = minX; x <= maxX; x += step) {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), x, minY, minZ), dustOptions, player);
                 spawnParticleForPlayer(new Location(corner1.getWorld(), x, maxY, minZ), dustOptions, player);
@@ -203,7 +201,6 @@ public class SelectionVisualizer {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), x, maxY, maxZ), dustOptions, player);
             }
 
-            // Y ekseni kenarları
             for (double y = minY; y <= maxY; y += step) {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), minX, y, minZ), dustOptions, player);
                 spawnParticleForPlayer(new Location(corner1.getWorld(), maxX, y, minZ), dustOptions, player);
@@ -211,7 +208,6 @@ public class SelectionVisualizer {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), maxX, y, maxZ), dustOptions, player);
             }
 
-            // Z ekseni kenarları
             for (double z = minZ; z <= maxZ; z += step) {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), minX, minY, z), dustOptions, player);
                 spawnParticleForPlayer(new Location(corner1.getWorld(), maxX, minY, z), dustOptions, player);

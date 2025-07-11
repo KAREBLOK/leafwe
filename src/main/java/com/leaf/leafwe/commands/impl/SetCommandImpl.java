@@ -97,7 +97,6 @@ public class SetCommandImpl extends BaseCommand {
 
         long volume = ManagerRegistry.selection().getVolume(player);
 
-        // Daily Limit kontrolü
         if (ManagerRegistry.dailyLimit() != null) {
             var limitResult = ManagerRegistry.dailyLimit().canPerformOperationDetailed(player, (int) volume);
 

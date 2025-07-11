@@ -18,12 +18,10 @@ public class MySQLDatabaseManager implements DatabaseManager {
     private HikariDataSource dataSource;
     private boolean initialized = false;
 
-    // Performance metrics
     private final AtomicLong totalQueries = new AtomicLong(0);
     private final AtomicLong totalQueryTime = new AtomicLong(0);
     private final AtomicLong slowQueries = new AtomicLong(0);
 
-    // SQL Statements
     private static final String CREATE_DAILY_USAGE_TABLE = """
         CREATE TABLE IF NOT EXISTS daily_usage (
             player_id VARCHAR(36) NOT NULL,
@@ -76,19 +74,15 @@ public class MySQLDatabaseManager implements DatabaseManager {
     public CompletableFuture<Boolean> initialize() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Setup connection pool
                 setupConnectionPool();
 
-                // Test connection
                 if (!testConnectionSync()) {
                     plugin.getLogger().severe("Failed to establish MySQL connection!");
                     return false;
                 }
 
-                // Create tables
                 createTables();
 
-                // Run optimization queries
                 optimizeDatabase();
 
                 initialized = true;
@@ -107,7 +101,6 @@ public class MySQLDatabaseManager implements DatabaseManager {
     private void setupConnectionPool() {
         HikariConfig config = new HikariConfig();
 
-        // Basic connection settings
         String host = plugin.getConfig().getString("database.mysql.host", "localhost");
         int port = plugin.getConfig().getInt("database.mysql.port", 3306);
         String database = plugin.getConfig().getString("database.mysql.database", "leafwe");
@@ -120,7 +113,6 @@ public class MySQLDatabaseManager implements DatabaseManager {
         config.setPassword(password);
         config.setDriverClassName("com.mysql.cj.jdbc.Driver");
 
-        // Connection pool settings
         config.setMaximumPoolSize(plugin.getConfig().getInt("database.connection-pool.maximum-pool-size", 10));
         config.setMinimumIdle(plugin.getConfig().getInt("database.connection-pool.minimum-idle", 2));
         config.setConnectionTimeout(plugin.getConfig().getLong("database.connection-pool.connection-timeout", 30000));
@@ -128,7 +120,6 @@ public class MySQLDatabaseManager implements DatabaseManager {
         config.setMaxLifetime(plugin.getConfig().getLong("database.connection-pool.max-lifetime", 1800000));
         config.setLeakDetectionThreshold(plugin.getConfig().getLong("database.connection-pool.leak-detection-threshold", 60000));
 
-        // MySQL specific properties
         boolean useSSL = plugin.getConfig().getBoolean("database.mysql.use-ssl", false);
         boolean verifyServerCert = plugin.getConfig().getBoolean("database.mysql.verify-server-certificate", false);
         String encoding = plugin.getConfig().getString("database.mysql.character-encoding", "utf8mb4");
@@ -138,7 +129,6 @@ public class MySQLDatabaseManager implements DatabaseManager {
         config.addDataSourceProperty("characterEncoding", encoding);
         config.addDataSourceProperty("useUnicode", true);
 
-        // Performance properties
         config.addDataSourceProperty("cachePrepStmts", plugin.getConfig().getBoolean("database.mysql.properties.cachePrepStmts", true));
         config.addDataSourceProperty("prepStmtCacheSize", plugin.getConfig().getInt("database.mysql.properties.prepStmtCacheSize", 250));
         config.addDataSourceProperty("prepStmtCacheSqlLimit", plugin.getConfig().getInt("database.mysql.properties.prepStmtCacheSqlLimit", 2048));
@@ -150,10 +140,8 @@ public class MySQLDatabaseManager implements DatabaseManager {
         config.addDataSourceProperty("elideSetAutoCommits", plugin.getConfig().getBoolean("database.mysql.properties.elideSetAutoCommits", true));
         config.addDataSourceProperty("maintainTimeStats", plugin.getConfig().getBoolean("database.mysql.properties.maintainTimeStats", false));
 
-        // Pool name for monitoring
         config.setPoolName("LeafWE-MySQL-Pool");
 
-        // Connection test query
         config.setConnectionTestQuery("SELECT 1");
 
         this.dataSource = new HikariDataSource(config);
@@ -191,16 +179,14 @@ public class MySQLDatabaseManager implements DatabaseManager {
             try (Connection conn = dataSource.getConnection();
                  Statement stmt = conn.createStatement()) {
 
-                // Analyze tables for better query optimization
                 stmt.execute("ANALYZE TABLE daily_usage, player_stats, sessions");
 
-                // Check if we need to optimize tables
                 ResultSet rs = stmt.executeQuery("SHOW TABLE STATUS WHERE Name IN ('daily_usage', 'player_stats', 'sessions')");
                 boolean needsOptimization = false;
 
                 while (rs.next()) {
                     long dataFree = rs.getLong("Data_free");
-                    if (dataFree > 1048576) { // More than 1MB fragmentation
+                    if (dataFree > 1048576) {
                         needsOptimization = true;
                         break;
                     }
@@ -224,7 +210,6 @@ public class MySQLDatabaseManager implements DatabaseManager {
             plugin.getLogger().info("Connected to MySQL " + metaData.getDatabaseProductVersion() +
                     " at " + metaData.getURL());
 
-            // Log connection pool status
             plugin.getLogger().info("Connection pool status: active=" + dataSource.getHikariPoolMXBean().getActiveConnections() +
                     ", idle=" + dataSource.getHikariPoolMXBean().getIdleConnections() +
                     ", total=" + dataSource.getHikariPoolMXBean().getTotalConnections());
@@ -234,11 +219,10 @@ public class MySQLDatabaseManager implements DatabaseManager {
     }
 
     @Override
-    public CompletableFuture<Boolean> shutdown() {
-        return CompletableFuture.supplyAsync(() -> {
+    public CompletableFuture<Void> shutdown() {
+        return CompletableFuture.runAsync(() -> {
             try {
                 if (dataSource != null && !dataSource.isClosed()) {
-                    // Log final pool statistics
                     var poolMBean = dataSource.getHikariPoolMXBean();
                     plugin.getLogger().info("Final pool stats - Total connections: " + poolMBean.getTotalConnections() +
                             ", Active: " + poolMBean.getActiveConnections() +
@@ -248,10 +232,8 @@ public class MySQLDatabaseManager implements DatabaseManager {
                     plugin.getLogger().info("MySQL connection pool closed");
                 }
                 initialized = false;
-                return true;
             } catch (Exception e) {
                 plugin.getLogger().warning("Error closing MySQL connection pool: " + e.getMessage());
-                return false;
             }
         });
     }
@@ -264,7 +246,7 @@ public class MySQLDatabaseManager implements DatabaseManager {
                  Statement stmt = conn.createStatement()) {
                 stmt.execute("SELECT 1");
 
-                long duration = (System.nanoTime() - startTime) / 1_000_000; // Convert to milliseconds
+                long duration = (System.nanoTime() - startTime) / 1_000_000;
                 if (duration > plugin.getConfig().getLong("database.performance.slow-query-threshold", 1000)) {
                     plugin.getLogger().warning("Slow connection test: " + duration + "ms");
                 }
@@ -413,11 +395,9 @@ public class MySQLDatabaseManager implements DatabaseManager {
         });
     }
 
-    // Implement other required methods similarly...
     @Override
     public CompletableFuture<PlayerStats> getPlayerStats(UUID playerId) {
         return CompletableFuture.supplyAsync(() -> {
-            // Implementation similar to SQLite but optimized for MySQL
             String sql = "SELECT * FROM player_stats WHERE player_id = ?";
             long startTime = System.nanoTime();
 
@@ -454,25 +434,21 @@ public class MySQLDatabaseManager implements DatabaseManager {
 
     @Override
     public CompletableFuture<Boolean> updatePlayerStats(UUID playerId, String statType, long value) {
-        // Implementation for MySQL
         return CompletableFuture.completedFuture(true);
     }
 
     @Override
     public CompletableFuture<Boolean> incrementPlayerStat(UUID playerId, String statType, long increment) {
-        // Implementation for MySQL
         return CompletableFuture.completedFuture(true);
     }
 
     @Override
     public CompletableFuture<Boolean> recordSession(UUID playerId, String sessionType, long duration) {
-        // Implementation for MySQL
         return CompletableFuture.completedFuture(true);
     }
 
     @Override
     public CompletableFuture<SessionData> getLastSession(UUID playerId) {
-        // Implementation for MySQL
         return CompletableFuture.completedFuture(null);
     }
 
@@ -575,7 +551,7 @@ public class MySQLDatabaseManager implements DatabaseManager {
                 long totalRecords = dailyUsageCount + playerStatsCount + sessionCount;
 
                 double avgResponseTime = totalQueries.get() > 0 ?
-                        (double) totalQueryTime.get() / totalQueries.get() / 1_000_000.0 : 0.0; // Convert to milliseconds
+                        (double) totalQueryTime.get() / totalQueries.get() / 1_000_000.0 : 0.0;
 
                 return new DatabaseStats(
                         "MySQL",

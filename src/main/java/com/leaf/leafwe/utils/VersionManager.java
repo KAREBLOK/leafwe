@@ -8,71 +8,72 @@ public class VersionManager {
     private final String version;
     private final String name;
     private final String description;
+    private final boolean isSupported;
 
     public VersionManager(LeafWE plugin) {
         this.plugin = plugin;
         this.version = plugin.getDescription().getVersion();
         this.name = plugin.getDescription().getName();
         this.description = plugin.getDescription().getDescription();
+        this.isSupported = checkServerCompatibility();
     }
 
-    /**
-     * Plugin versiyonunu al
-     */
     public String getVersion() {
         return version;
     }
 
-    /**
-     * Plugin adını al
-     */
     public String getName() {
         return name;
     }
 
-    /**
-     * Plugin açıklamasını al
-     */
     public String getDescription() {
         return description;
     }
 
-    /**
-     * Tam plugin bilgisini al
-     */
+    public boolean isServerSupported() {
+        return isSupported;
+    }
+
     public String getFullInfo() {
         return name + " v" + version;
     }
 
-    /**
-     * Enable mesajını al
-     */
     public String getEnableMessage() {
         return name + " v" + version + " successfully enabled!";
     }
 
-    /**
-     * Disable mesajını al
-     */
     public String getDisableMessage() {
         return name + " v" + version + " disabled successfully.";
     }
 
-    /**
-     * Plugin bilgilerini logla
-     */
     public void logPluginInfo() {
         plugin.getLogger().info("=".repeat(50));
         plugin.getLogger().info(name + " v" + version);
         plugin.getLogger().info("Description: " + description);
         plugin.getLogger().info("Author(s): " + String.join(", ", plugin.getDescription().getAuthors()));
         plugin.getLogger().info("API Version: " + plugin.getDescription().getAPIVersion());
+        plugin.getLogger().info("Server Support: " + (isSupported ? "✅ SUPPORTED" : "⚠️ UNSUPPORTED"));
         plugin.getLogger().info("=".repeat(50));
     }
 
-    /**
-     * Version karşılaştırması yap
-     */
+    private boolean checkServerCompatibility() {
+        try {
+            String apiVersion = plugin.getDescription().getAPIVersion();
+            if (apiVersion != null) {
+                return apiVersion.startsWith("1.19") ||
+                        apiVersion.startsWith("1.20") ||
+                        apiVersion.startsWith("1.21");
+            }
+
+            String serverVersion = plugin.getServer().getBukkitVersion();
+            return serverVersion.contains("1.19") ||
+                    serverVersion.contains("1.20") ||
+                    serverVersion.contains("1.21");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public int compareVersion(String otherVersion) {
         String[] currentParts = version.split("\\.");
         String[] otherParts = otherVersion.split("\\.");
@@ -98,9 +99,6 @@ public class VersionManager {
         }
     }
 
-    /**
-     * Debug bilgilerini al
-     */
     public String getDebugInfo() {
         return String.format(
                 "Plugin: %s v%s | Server: %s %s | Java: %s",
@@ -110,5 +108,27 @@ public class VersionManager {
                 plugin.getServer().getVersion(),
                 System.getProperty("java.version")
         );
+    }
+
+    public String getSystemInfo() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== System Information ===\n");
+        sb.append("Plugin: ").append(getFullInfo()).append("\n");
+        sb.append("Authors: ").append(String.join(", ", plugin.getDescription().getAuthors())).append("\n");
+        sb.append("API Version: ").append(plugin.getDescription().getAPIVersion()).append("\n");
+        sb.append("Server: ").append(plugin.getServer().getName()).append(" ").append(plugin.getServer().getVersion()).append("\n");
+        sb.append("Java: ").append(System.getProperty("java.version")).append("\n");
+        sb.append("OS: ").append(System.getProperty("os.name")).append(" ").append(System.getProperty("os.version")).append("\n");
+        sb.append("Memory: ").append(formatMemory(Runtime.getRuntime().maxMemory())).append(" max, ");
+        sb.append(formatMemory(Runtime.getRuntime().totalMemory())).append(" allocated, ");
+        sb.append(formatMemory(Runtime.getRuntime().freeMemory())).append(" free\n");
+        sb.append("Compatibility: ").append(isSupported ? "✅ SUPPORTED" : "❌ UNSUPPORTED").append("\n");
+
+        return sb.toString();
+    }
+
+    private String formatMemory(long bytes) {
+        long mb = bytes / (1024 * 1024);
+        return mb + "MB";
     }
 }
