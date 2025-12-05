@@ -1,4 +1,8 @@
-package com.leaf.leafwe;
+package com.leaf.leafwe.tasks;
+
+import com.leaf.leafwe.gui.*;
+import com.leaf.leafwe.managers.*;
+import com.leaf.leafwe.LeafWE;
 
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Color;
@@ -17,8 +21,9 @@ import org.bukkit.util.EulerAngle;
 import java.util.List;
 
 public class ReplaceTask extends BukkitRunnable {
+    private final LeafWE plugin;
     private final Player player;
-    private final List<Block> blocksToChange;
+    private final List<Location> locationsToChange;
     private final Material toMaterial;
     private final ConfigManager configManager;
     private final SelectionVisualizer selectionVisualizer;
@@ -30,36 +35,38 @@ public class ReplaceTask extends BukkitRunnable {
     private boolean isRunning = true;
     private boolean isCompleted = false;
 
-    public ReplaceTask(Player player, List<Block> blocksToChange, Material toMaterial,
+    public ReplaceTask(LeafWE plugin, Player player, List<Location> locationsToChange, Material toMaterial,
                        ConfigManager configManager, SelectionVisualizer visualizer,
                        TaskManager taskManager, BlockstateManager blockstateManager) {
+        this.plugin = plugin;
         this.player = player;
-        this.blocksToChange = blocksToChange;
+        this.locationsToChange = locationsToChange;
         this.toMaterial = toMaterial;
         this.configManager = configManager;
         this.selectionVisualizer = visualizer;
         this.taskManager = taskManager;
         this.blockstateManager = blockstateManager;
-        this.totalBlocks = blocksToChange.size();
+        this.totalBlocks = locationsToChange.size();
     }
 
     @Override
     public void run() {
         if (!isRunning) return;
 
-        if (blocksToChange.isEmpty() || !player.getInventory().contains(toMaterial)) {
+        if (locationsToChange.isEmpty() || !player.getInventory().contains(toMaterial)) {
             finishTask();
             return;
         }
 
-        Block currentBlock = blocksToChange.remove(0);
+        Location currentLocation = locationsToChange.remove(0);
+        Block currentBlock = currentLocation.getBlock();
 
         if (worker == null && configManager.isWorkerAnimationEnabled()) {
-            spawnWorker(currentBlock.getLocation());
+            spawnWorker(currentLocation);
         }
 
         if (worker != null && !worker.isDead()) {
-            Location workerLocation = currentBlock.getLocation().clone().add(0.5, configManager.getWorkerYOffset(), 0.5);
+            Location workerLocation = currentLocation.clone().add(0.5, configManager.getWorkerYOffset(), 0.5);
             worker.teleport(workerLocation);
             worker.swingMainHand();
         }
@@ -73,7 +80,7 @@ public class ReplaceTask extends BukkitRunnable {
 
         if (configManager.getPlacementParticle() != null) {
             player.getWorld().spawnParticle(configManager.getPlacementParticle(),
-                    currentBlock.getLocation().clone().add(0.5, 0.5, 0.5), 1, 0, 0, 0, 0);
+                    currentLocation.clone().add(0.5, 0.5, 0.5), 1, 0, 0, 0, 0);
         }
 
         player.getInventory().removeItem(new ItemStack(toMaterial, 1));
@@ -92,11 +99,11 @@ public class ReplaceTask extends BukkitRunnable {
         taskManager.finishTask(player);
         selectionVisualizer.playSuccessEffect(player);
 
-        if (!blocksToChange.isEmpty()) {
+        if (!locationsToChange.isEmpty()) {
             player.sendMessage(configManager.getMessage("inventory-ran-out")
                     .replaceText(config -> config.matchLiteral("%block%").replacement(toMaterial.name())));
             player.sendMessage(configManager.getMessage("process-incomplete")
-                    .replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(blocksToChange.size()))));
+                    .replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(locationsToChange.size()))));
 
             String operationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
                     .serialize(configManager.getProgressOperationReplacing());

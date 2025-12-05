@@ -1,4 +1,8 @@
-package com.leaf.leafwe;
+package com.leaf.leafwe.gui;
+
+import com.leaf.leafwe.managers.*;
+
+import com.leaf.leafwe.LeafWE;
 
 import org.bukkit.Color;
 import org.bukkit.Location;

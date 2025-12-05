@@ -1,6 +1,8 @@
 package com.leaf.leafwe.registry;
 
-import com.leaf.leafwe.*;
+import com.leaf.leafwe.managers.*;
+import com.leaf.leafwe.gui.GuiManager;
+import com.leaf.leafwe.gui.SelectionVisualizer;
 import com.leaf.leafwe.database.AsyncDatabaseManager;
 import com.leaf.leafwe.database.DatabaseManager;
 import com.leaf.leafwe.database.migration.MigrationManager;

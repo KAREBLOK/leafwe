@@ -1,6 +1,7 @@
 package com.leaf.leafwe.commands.impl;
 
-import com.leaf.leafwe.*;
+import com.leaf.leafwe.LeafWE;
+import com.leaf.leafwe.managers.*;
 import com.leaf.leafwe.registry.ManagerRegistry;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -14,18 +15,9 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 public class LWECommandImpl implements CommandExecutor {
     private final LeafWE plugin;
-    private final ConfigManager configManager;
-    private final UndoManager undoManager;
-    private final PendingCommandManager pendingCommandManager;
-    private final BlockstateManager blockstateManager;
 
-    public LWECommandImpl(LeafWE plugin, ConfigManager configManager, UndoManager undoManager,
-                          PendingCommandManager pendingManager, BlockstateManager blockstateManager) {
+    public LWECommandImpl(LeafWE plugin) {
         this.plugin = plugin;
-        this.configManager = configManager;
-        this.undoManager = undoManager;
-        this.pendingCommandManager = pendingManager;
-        this.blockstateManager = blockstateManager;
     }
 
     @Override
@@ -63,14 +55,14 @@ public class LWECommandImpl implements CommandExecutor {
 
     private boolean handleReload(CommandSender sender) {
         if (!sender.hasPermission("leafwe.reload")) {
-            sender.sendMessage(configManager.getMessage("no-permission"));
+            sender.sendMessage(ManagerRegistry.config().getMessage("no-permission"));
             return true;
         }
 
         try {
             sender.sendMessage(Component.text("Reloading LeafWE configuration...", NamedTextColor.YELLOW));
 
-            configManager.loadConfig();
+            ManagerRegistry.config().loadConfig();
             sender.sendMessage(Component.text("✅ Configuration reloaded successfully!", NamedTextColor.GREEN));
 
         } catch (Exception e) {
@@ -82,7 +74,7 @@ public class LWECommandImpl implements CommandExecutor {
 
     private boolean handleGive(CommandSender sender, String[] args) {
         if (!sender.hasPermission("leafwe.give")) {
-            sender.sendMessage(configManager.getMessage("no-permission"));
+            sender.sendMessage(ManagerRegistry.config().getMessage("no-permission"));
             return true;
         }
 
@@ -99,7 +91,7 @@ public class LWECommandImpl implements CommandExecutor {
 
         Player target = Bukkit.getPlayerExact(targetName);
         if (target == null || !target.isOnline()) {
-            sender.sendMessage(configManager.getMessage("player-not-found")
+            sender.sendMessage(ManagerRegistry.config().getMessage("player-not-found")
                     .replaceText(config -> config.matchLiteral("%player%").replacement(targetName)));
             return true;
         }
@@ -111,9 +103,9 @@ public class LWECommandImpl implements CommandExecutor {
             target.getInventory().addItem(wand);
         }
 
-        target.sendMessage(configManager.getMessage("wand-given-receiver"));
+        target.sendMessage(ManagerRegistry.config().getMessage("wand-given-receiver"));
         if (!sender.equals(target)) {
-            sender.sendMessage(configManager.getMessage("wand-given-sender")
+            sender.sendMessage(ManagerRegistry.config().getMessage("wand-given-sender")
                     .replaceText(config -> config.matchLiteral("%player%").replacement(target.getName())));
         }
         return true;
@@ -121,79 +113,79 @@ public class LWECommandImpl implements CommandExecutor {
 
     private boolean handleUndo(CommandSender sender) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(configManager.getMessage("players-only"));
+            sender.sendMessage(ManagerRegistry.config().getMessage("players-only"));
             return true;
         }
 
         if (!player.hasPermission("leafwe.undo")) {
-            player.sendMessage(configManager.getMessage("no-permission"));
+            player.sendMessage(ManagerRegistry.config().getMessage("no-permission"));
             return true;
         }
 
-        TaskManager taskManager = plugin.getTaskManager();
+        TaskManager taskManager = ManagerRegistry.task();
         if (taskManager != null && taskManager.hasActiveTask(player)) {
             taskManager.finishTask(player);
-            player.sendMessage(configManager.getTaskCancelledForUndo());
+            player.sendMessage(ManagerRegistry.config().getTaskCancelledForUndo());
             ProgressBarManager.showCancellation(player, "Operation cancelled for undo");
         }
 
-        if (!undoManager.undoLastChange(player)) {
-            player.sendMessage(configManager.getMessage("no-undo"));
+        if (!ManagerRegistry.undo().undoLastChange(player)) {
+            player.sendMessage(ManagerRegistry.config().getMessage("no-undo"));
         }
         return true;
     }
 
     private boolean handleConfirm(CommandSender sender) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(configManager.getMessage("players-only"));
+            sender.sendMessage(ManagerRegistry.config().getMessage("players-only"));
             return true;
         }
 
         if (!player.hasPermission("leafwe.confirm")) {
-            player.sendMessage(configManager.getMessage("no-permission"));
+            player.sendMessage(ManagerRegistry.config().getMessage("no-permission"));
             return true;
         }
 
-        if (pendingCommandManager.confirm(player)) {
-            player.sendMessage(configManager.getMessage("confirmation-successful"));
+        if (ManagerRegistry.pending().confirm(player)) {
+            player.sendMessage(ManagerRegistry.config().getMessage("confirmation-successful"));
         } else {
-            player.sendMessage(configManager.getMessage("no-pending-confirmation"));
+            player.sendMessage(ManagerRegistry.config().getMessage("no-pending-confirmation"));
         }
         return true;
     }
 
     private boolean handleLimits(CommandSender sender) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(configManager.getMessage("players-only"));
+            sender.sendMessage(ManagerRegistry.config().getMessage("players-only"));
             return true;
         }
 
-        DailyLimitManager dailyLimitManager = plugin.getDailyLimitManager();
+        DailyLimitManager dailyLimitManager = ManagerRegistry.dailyLimit();
 
-        if (dailyLimitManager == null || !configManager.isDailyLimitsEnabled()) {
-            player.sendMessage(configManager.getDailyLimitsDisabled());
+        if (dailyLimitManager == null || !ManagerRegistry.config().isDailyLimitsEnabled()) {
+            player.sendMessage(ManagerRegistry.config().getDailyLimitsDisabled());
             return true;
         }
 
         DailyLimitManager.DailyUsageInfo usageInfo = dailyLimitManager.getUsageInfo(player);
 
-        player.sendMessage(configManager.getDailyLimitsHeader());
-        player.sendMessage(configManager.getDailyLimitsGroup()
+        player.sendMessage(ManagerRegistry.config().getDailyLimitsHeader());
+        player.sendMessage(ManagerRegistry.config().getDailyLimitsGroup()
                 .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
 
         if (usageInfo.maxBlocks == -1) {
-            player.sendMessage(configManager.getDailyLimitsBlocksUnlimited());
+            player.sendMessage(ManagerRegistry.config().getDailyLimitsBlocksUnlimited());
         } else {
-            player.sendMessage(configManager.getDailyLimitsBlocks()
+            player.sendMessage(ManagerRegistry.config().getDailyLimitsBlocks()
                     .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedBlocks)))
                     .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxBlocks)))
                     .replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(usageInfo.getRemainingBlocks()))));
         }
 
         if (usageInfo.maxOperations == -1) {
-            player.sendMessage(configManager.getDailyLimitsOperationsUnlimited());
+            player.sendMessage(ManagerRegistry.config().getDailyLimitsOperationsUnlimited());
         } else {
-            player.sendMessage(configManager.getDailyLimitsOperations()
+            player.sendMessage(ManagerRegistry.config().getDailyLimitsOperations()
                     .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedOperations)))
                     .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxOperations)))
                     .replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(usageInfo.getRemainingOperations()))));
@@ -204,7 +196,7 @@ public class LWECommandImpl implements CommandExecutor {
 
     private boolean handleStatus(CommandSender sender) {
         if (!sender.hasPermission("leafwe.admin.status")) {
-            sender.sendMessage(configManager.getMessage("no-permission"));
+            sender.sendMessage(ManagerRegistry.config().getMessage("no-permission"));
             return true;
         }
 
@@ -230,7 +222,7 @@ public class LWECommandImpl implements CommandExecutor {
             sender.sendMessage(Component.text("Database Type: " + ManagerRegistry.database().getDatabaseType(), NamedTextColor.GRAY));
         }
 
-        TaskManager taskManager = plugin.getTaskManager();
+        TaskManager taskManager = ManagerRegistry.task();
         if (taskManager != null) {
             sender.sendMessage(Component.text("Active Tasks: " + taskManager.getActiveTaskCount(), NamedTextColor.GRAY));
         }
@@ -240,7 +232,7 @@ public class LWECommandImpl implements CommandExecutor {
 
     private boolean handleMigration(CommandSender sender, String[] args) {
         if (!sender.hasPermission("leafwe.admin.migration")) {
-            sender.sendMessage(configManager.getMessage("no-permission"));
+            sender.sendMessage(ManagerRegistry.config().getMessage("no-permission"));
             return true;
         }
 
@@ -256,7 +248,7 @@ public class LWECommandImpl implements CommandExecutor {
 
     private boolean handleDebug(CommandSender sender) {
         if (!sender.hasPermission("leafwe.admin.debug")) {
-            sender.sendMessage(configManager.getMessage("no-permission"));
+            sender.sendMessage(ManagerRegistry.config().getMessage("no-permission"));
             return true;
         }
 
@@ -306,11 +298,11 @@ public class LWECommandImpl implements CommandExecutor {
     }
 
     private ItemStack createWand() {
-        ItemStack wand = new ItemStack(configManager.getWandMaterial(), 1);
+        ItemStack wand = new ItemStack(ManagerRegistry.config().getWandMaterial(), 1);
         ItemMeta meta = wand.getItemMeta();
         if (meta != null) {
-            meta.displayName(configManager.getWandName());
-            meta.lore(configManager.getWandLore());
+            meta.displayName(ManagerRegistry.config().getWandName());
+            meta.lore(ManagerRegistry.config().getWandLore());
             wand.setItemMeta(meta);
         }
         return wand;

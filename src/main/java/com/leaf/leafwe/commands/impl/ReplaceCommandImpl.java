@@ -1,6 +1,12 @@
 package com.leaf.leafwe.commands.impl;
 
-import com.leaf.leafwe.*;
+import com.leaf.leafwe.LeafWE;
+import com.leaf.leafwe.commands.BaseCommand;
+import com.leaf.leafwe.managers.*;
+import com.leaf.leafwe.gui.GuiManager;
+import com.leaf.leafwe.gui.SelectionVisualizer;
+import com.leaf.leafwe.tasks.ReplaceTask;
+import com.leaf.leafwe.registry.ManagerRegistry;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -8,124 +14,116 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ReplaceCommandImpl implements CommandExecutor {
-    private final LeafWE plugin;
-    private final SelectionManager selectionManager;
-    private final ConfigManager configManager;
-    private final UndoManager undoManager;
-    private final PendingCommandManager pendingCommandManager;
-    private final SelectionVisualizer selectionVisualizer;
-    private final TaskManager taskManager;
-    private final BlockstateManager blockstateManager;
-    private final GuiManager guiManager;
+public class ReplaceCommandImpl extends BaseCommand {
 
-    public ReplaceCommandImpl(LeafWE plugin, SelectionManager selManager, ConfigManager confManager,
-                              UndoManager undoManager, PendingCommandManager pendingManager,
-                              SelectionVisualizer visualizer, TaskManager taskManager,
-                              BlockstateManager blockstateManager, GuiManager guiManager) {
-        this.plugin = plugin;
-        this.selectionManager = selManager;
-        this.configManager = confManager;
-        this.undoManager = undoManager;
-        this.pendingCommandManager = pendingManager;
-        this.selectionVisualizer = visualizer;
-        this.taskManager = taskManager;
-        this.blockstateManager = blockstateManager;
-        this.guiManager = guiManager;
+    public ReplaceCommandImpl(LeafWE plugin) {
+        super(plugin);
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(configManager.getMessage("players-only"));
+    public boolean execute(CommandSender sender, Command command, String label, String[] args) {
+        if (!performBasicChecks(sender)) {
             return true;
         }
 
-        if (taskManager.hasActiveTask(player)) {
-            player.sendMessage(configManager.getMessage("task-already-running"));
+        Player player = getPlayer(sender);
+
+        if (ManagerRegistry.task().hasActiveTask(player)) {
+            player.sendMessage(ManagerRegistry.config().getMessage("task-already-running"));
             return true;
         }
 
-        if (!player.hasPermission("leafwe.replace")) {
-            player.sendMessage(configManager.getMessage("no-permission"));
+        if (ManagerRegistry.config().getDisabledWorlds().contains(player.getWorld().getName().toLowerCase())) {
+            player.sendMessage(ManagerRegistry.config().getMessage("world-disabled"));
             return true;
         }
 
-        if (configManager.getDisabledWorlds().contains(player.getWorld().getName().toLowerCase())) {
-            player.sendMessage(configManager.getMessage("world-disabled"));
-            return true;
-        }
-
-        Location pos1 = selectionManager.getPosition1(player);
+        Location pos1 = ManagerRegistry.selection().getPosition1(player);
         if (pos1 == null) {
-            player.sendMessage(configManager.getMessage("select-pos1"));
+            player.sendMessage(ManagerRegistry.config().getMessage("select-pos1"));
             return true;
         }
 
-        Location pos2 = selectionManager.getPosition2(player);
+        Location pos2 = ManagerRegistry.selection().getPosition2(player);
         if (pos2 == null) {
-            player.sendMessage(configManager.getMessage("select-pos2"));
+            player.sendMessage(ManagerRegistry.config().getMessage("select-pos2"));
+            return true;
+        }
+
+        if (!ManagerRegistry.selection().hasSameWorld(player)) {
+            player.sendMessage(Component.text("§cPositions must be in the same world!"));
             return true;
         }
 
         if (!checkAreaPermissions(player, pos1, pos2)) {
-            player.sendMessage(configManager.getMessage("protection-no-permission"));
+            player.sendMessage(ManagerRegistry.config().getMessage("protection-no-permission"));
             return true;
         }
 
         if (args.length == 0) {
-            guiManager.openReplaceGui(player);
-            return true;
-        }
-
-        if (args.length != 2) {
-            player.sendMessage(configManager.getMessage("invalid-usage-replace"));
+            ManagerRegistry.gui().openBlockPickerGui(player, "replace_from", null);
             return true;
         }
 
         Material fromBlock;
         Material toBlock;
-        try {
-            fromBlock = Material.valueOf(args[0].trim().toUpperCase());
-            toBlock = Material.valueOf(args[1].trim().toUpperCase());
 
-            if (!fromBlock.isBlock()) {
-                player.sendMessage(configManager.getMessage("invalid-block")
+        try {
+            String fromMaterialName = args[0].trim().toUpperCase();
+            fromBlock = Material.valueOf(fromMaterialName);
+
+            if (!fromBlock.isBlock() && !fromBlock.isAir()) {
+                 player.sendMessage(ManagerRegistry.config().getMessage("invalid-block")
                         .replaceText(config -> config.matchLiteral("%block%").replacement(args[0])));
                 return true;
             }
+        } catch (IllegalArgumentException e) {
+            player.sendMessage(ManagerRegistry.config().getMessage("invalid-block")
+                    .replaceText(config -> config.matchLiteral("%block%").replacement(args[0])));
+            return true;
+        }
+
+        if (args.length == 1) {
+             ManagerRegistry.gui().setLastReplacedFrom(player, fromBlock);
+             ManagerRegistry.gui().openBlockPickerGui(player, "replace_to", null);
+             return true;
+        }
+
+        try {
+            String toMaterialName = args[1].trim().toUpperCase();
+            toBlock = Material.valueOf(toMaterialName);
 
             if (!toBlock.isBlock()) {
-                player.sendMessage(configManager.getMessage("invalid-block")
+                player.sendMessage(ManagerRegistry.config().getMessage("invalid-block")
                         .replaceText(config -> config.matchLiteral("%block%").replacement(args[1])));
                 return true;
             }
         } catch (IllegalArgumentException e) {
-            player.sendMessage(configManager.getMessage("invalid-block")
-                    .replaceText(config -> config.matchLiteral("%block%").replacement("UNKNOWN")));
+            player.sendMessage(ManagerRegistry.config().getMessage("invalid-block")
+                    .replaceText(config -> config.matchLiteral("%block%").replacement(args[1])));
             return true;
         }
 
-        if (configManager.getBlockedMaterials().contains(toBlock)) {
-            player.sendMessage(configManager.getMessage("blacklisted-block"));
+        if (ManagerRegistry.config().getBlockedMaterials().contains(toBlock)) {
+            player.sendMessage(ManagerRegistry.config().getMessage("blacklisted-block"));
             return true;
         }
 
         if (!player.getInventory().contains(toBlock)) {
-            player.sendMessage(configManager.getMessage("inventory-empty")
+            player.sendMessage(ManagerRegistry.config().getMessage("inventory-empty")
                     .replaceText(config -> config.matchLiteral("%block%").replacement(toBlock.name())));
             return true;
         }
 
-        List<Block> blocksToChange = new ArrayList<>();
+        List<Location> locationsToFill = new ArrayList<>();
         Map<Location, BlockData> undoData = new HashMap<>();
 
         try {
@@ -140,40 +138,39 @@ public class ReplaceCommandImpl implements CommandExecutor {
             for (int x = minX; x <= maxX; x++) {
                 for (int y = minY; y <= maxY; y++) {
                     for (int z = minZ; z <= maxZ; z++) {
-                        Block block = world.getBlockAt(x, y, z);
+                        Location loc = new Location(world, x, y, z);
+                        Block block = loc.getBlock();
                         if (block.getType() == fromBlock) {
-                            blocksToChange.add(block);
-                            undoData.put(block.getLocation(), block.getBlockData());
+                            locationsToFill.add(loc);
+                            undoData.put(loc, block.getBlockData());
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            player.sendMessage(Component.text("§cError while scanning blocks: " + e.getMessage()));
+            player.sendMessage(Component.text("§cError while calculating replace locations: " + e.getMessage()));
             return true;
         }
 
-        if (blocksToChange.isEmpty()) {
-            player.sendMessage(Component.text("§cNo '" + fromBlock.name() + "' blocks found in the selected area."));
+        if (locationsToFill.isEmpty()) {
+            player.sendMessage(Component.text("§cNo blocks found to replace."));
             return true;
         }
 
-        long volume = blocksToChange.size();
+        long volume = locationsToFill.size();
 
-        DailyLimitManager dailyLimitManager = plugin.getDailyLimitManager();
-        if (dailyLimitManager != null) {
-            DailyLimitManager.LimitCheckResult limitResult = dailyLimitManager.canPerformOperationDetailed(player, (int) volume);
+        if (ManagerRegistry.dailyLimit() != null) {
+            var limitResult = ManagerRegistry.dailyLimit().canPerformOperationDetailed(player, (int) volume);
 
             if (!limitResult.canPerform) {
-                DailyLimitManager.DailyUsageInfo usageInfo = dailyLimitManager.getUsageInfo(player);
-
+                var usageInfo = ManagerRegistry.dailyLimit().getUsageInfo(player);
                 if (limitResult.limitType == DailyLimitManager.LimitType.BLOCKS) {
-                    player.sendMessage(configManager.getDailyLimitBlocksExceeded()
+                     player.sendMessage(ManagerRegistry.config().getDailyLimitBlocksExceeded()
                             .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedBlocks)))
                             .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxBlocks)))
                             .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
-                } else if (limitResult.limitType == DailyLimitManager.LimitType.OPERATIONS) {
-                    player.sendMessage(configManager.getDailyLimitOperationsExceeded()
+                } else {
+                     player.sendMessage(ManagerRegistry.config().getDailyLimitOperationsExceeded()
                             .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedOperations)))
                             .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxOperations)))
                             .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
@@ -182,39 +179,40 @@ public class ReplaceCommandImpl implements CommandExecutor {
             }
         }
 
-        if (!player.hasPermission("leafwe.bypass.limit") && volume > configManager.getMaxVolume()) {
-            player.sendMessage(configManager.getMessage("volume-limit-exceeded")
-                    .replaceText(config -> config.matchLiteral("%limit%").replacement(String.valueOf(configManager.getMaxVolume()))));
+        if (!player.hasPermission("leafwe.bypass.limit") && volume > ManagerRegistry.config().getMaxVolume()) {
+            player.sendMessage(ManagerRegistry.config().getMessage("volume-limit-exceeded")
+                    .replaceText(config -> config.matchLiteral("%limit%").replacement(String.valueOf(ManagerRegistry.config().getMaxVolume()))));
             return true;
         }
 
-        final Material finalFromBlock = fromBlock;
         final Material finalToBlock = toBlock;
 
         Runnable executionTask = () -> {
             try {
-                undoManager.addHistory(player, undoData);
-                guiManager.setLastReplacedFrom(player, finalFromBlock);
-                player.sendMessage(configManager.getMessage("process-starting"));
+                ManagerRegistry.undo().addHistory(player, undoData);
+                player.sendMessage(ManagerRegistry.config().getMessage("process-starting"));
 
-                ReplaceTask task = new ReplaceTask(player, blocksToChange, finalToBlock,
-                        configManager, selectionVisualizer, taskManager, blockstateManager);
-                task.runTaskTimer(plugin, 2L, configManager.getSpeed());
-                taskManager.startTask(player, task);
+                ReplaceTask task = new ReplaceTask(
+                        plugin, player, locationsToFill, finalToBlock,
+                        ManagerRegistry.config(), ManagerRegistry.visualizer(),
+                        ManagerRegistry.task(), ManagerRegistry.blockstate()
+                );
+                task.runTaskTimer(plugin, 2L, ManagerRegistry.config().getSpeed());
+                ManagerRegistry.task().startTask(player, task);
             } catch (Exception e) {
                 player.sendMessage(Component.text("§cError starting replace task: " + e.getMessage()));
             }
         };
 
-        int confirmationLimit = configManager.getConfirmationLimit();
+        int confirmationLimit = ManagerRegistry.config().getConfirmationLimit();
         if (confirmationLimit > 0 && volume > confirmationLimit) {
-            if (pendingCommandManager.hasPending(player)) {
-                player.sendMessage(configManager.getMessage("confirmation-pending"));
+            if (ManagerRegistry.pending().hasPending(player)) {
+                player.sendMessage(ManagerRegistry.config().getMessage("confirmation-pending"));
                 return true;
             }
 
-            pendingCommandManager.setPending(player, executionTask);
-            player.sendMessage(configManager.getMessage("confirmation-required")
+            ManagerRegistry.pending().setPending(player, executionTask);
+            player.sendMessage(ManagerRegistry.config().getMessage("confirmation-required")
                     .replaceText(config -> config.matchLiteral("%total%").replacement(String.valueOf(volume))));
         } else {
             executionTask.run();
@@ -228,8 +226,7 @@ public class ReplaceCommandImpl implements CommandExecutor {
             return true;
         }
 
-        ProtectionManager protectionManager = plugin.getProtectionManager();
-        if (protectionManager == null) {
+        if (ManagerRegistry.protection() == null) {
             return true;
         }
 
@@ -250,11 +247,31 @@ public class ReplaceCommandImpl implements CommandExecutor {
         };
 
         for (Location checkPoint : checkPoints) {
-            if (!protectionManager.canBuild(player, checkPoint)) {
+            if (!ManagerRegistry.protection().canBuild(player, checkPoint)) {
                 return false;
             }
         }
 
+        return true;
+    }
+
+    @Override
+    public String getDescription() {
+        return "Replace blocks in the selected area";
+    }
+
+    @Override
+    public String getUsage() {
+        return "/replace <from> <to>";
+    }
+
+    @Override
+    public String getPermission() {
+        return "leafwe.replace";
+    }
+
+    @Override
+    public boolean isPlayerOnly() {
         return true;
     }
 }

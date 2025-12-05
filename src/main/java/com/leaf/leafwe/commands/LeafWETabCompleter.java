@@ -1,12 +1,14 @@
 package com.leaf.leafwe.commands;
 
-import com.leaf.leafwe.ConfigManager;
+import com.leaf.leafwe.LeafWE;
+import com.leaf.leafwe.registry.ManagerRegistry;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,11 +17,11 @@ import java.util.stream.Collectors;
 
 public class LeafWETabCompleter implements TabCompleter {
 
-    private final ConfigManager configManager;
+    private final LeafWE plugin;
     private final List<String> blockMaterials;
 
-    public LeafWETabCompleter(ConfigManager configManager) {
-        this.configManager = configManager;
+    public LeafWETabCompleter(LeafWE plugin) {
+        this.plugin = plugin;
         this.blockMaterials = initializeBlockMaterials();
     }
 
@@ -83,7 +85,7 @@ public class LeafWETabCompleter implements TabCompleter {
 
         for (ItemStack item : player.getInventory().getContents()) {
             if (item != null && item.getType().isBlock() &&
-                    !configManager.getBlockedMaterials().contains(item.getType())) {
+                    !ManagerRegistry.config().getBlockedMaterials().contains(item.getType())) {
                 String materialName = item.getType().name().toLowerCase();
                 if (!availableBlocks.contains(materialName)) {
                     availableBlocks.add(materialName);
@@ -96,7 +98,7 @@ public class LeafWETabCompleter implements TabCompleter {
                     .filter(material -> {
                         try {
                             Material mat = Material.valueOf(material.toUpperCase());
-                            return !configManager.getBlockedMaterials().contains(mat);
+                            return !ManagerRegistry.config().getBlockedMaterials().contains(mat);
                         } catch (IllegalArgumentException e) {
                             return false;
                         }

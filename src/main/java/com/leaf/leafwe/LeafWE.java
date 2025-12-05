@@ -7,6 +7,12 @@ import com.leaf.leafwe.database.DatabaseManager;
 import com.leaf.leafwe.database.migration.MigrationManager;
 import com.leaf.leafwe.registry.ManagerRegistry;
 import com.leaf.leafwe.utils.VersionManager;
+import com.leaf.leafwe.managers.*;
+import com.leaf.leafwe.gui.GuiManager;
+import com.leaf.leafwe.gui.SelectionVisualizer;
+import com.leaf.leafwe.listeners.WandListener;
+import com.leaf.leafwe.listeners.PlayerListener;
+import com.leaf.leafwe.listeners.GuiListener;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.concurrent.CompletableFuture;

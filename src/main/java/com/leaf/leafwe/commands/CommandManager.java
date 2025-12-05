@@ -1,5 +1,9 @@
 package com.leaf.leafwe.commands;
 
+import com.leaf.leafwe.tasks.*;
+
+import com.leaf.leafwe.managers.*;
+
 import com.leaf.leafwe.LeafWE;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -19,38 +23,12 @@ public class CommandManager implements CommandExecutor, TabCompleter {
 
     public CommandManager(LeafWE plugin) {
         this.plugin = plugin;
-        this.tabCompleter = new LeafWETabCompleter(plugin.getConfigManager());
+        this.tabCompleter = new LeafWETabCompleter(plugin);
 
         this.setCommand = new CommandExecutorWrapper(new com.leaf.leafwe.commands.impl.SetCommandImpl(plugin));
-        this.wallCommand = new com.leaf.leafwe.commands.impl.WallCommandImpl(
-                plugin,
-                plugin.getSelectionManager(),
-                plugin.getConfigManager(),
-                plugin.getUndoManager(),
-                plugin.getPendingCommandManager(),
-                plugin.getSelectionVisualizer(),
-                plugin.getTaskManager(),
-                plugin.getBlockstateManager(),
-                plugin.getGuiManager()
-        );
-        this.replaceCommand = new com.leaf.leafwe.commands.impl.ReplaceCommandImpl(
-                plugin,
-                plugin.getSelectionManager(),
-                plugin.getConfigManager(),
-                plugin.getUndoManager(),
-                plugin.getPendingCommandManager(),
-                plugin.getSelectionVisualizer(),
-                plugin.getTaskManager(),
-                plugin.getBlockstateManager(),
-                plugin.getGuiManager()
-        );
-        this.lweCommand = new com.leaf.leafwe.commands.impl.LWECommandImpl(
-                plugin,
-                plugin.getConfigManager(),
-                plugin.getUndoManager(),
-                plugin.getPendingCommandManager(),
-                plugin.getBlockstateManager()
-        );
+        this.wallCommand = new CommandExecutorWrapper(new com.leaf.leafwe.commands.impl.WallCommandImpl(plugin));
+        this.replaceCommand = new CommandExecutorWrapper(new com.leaf.leafwe.commands.impl.ReplaceCommandImpl(plugin));
+        this.lweCommand = new com.leaf.leafwe.commands.impl.LWECommandImpl(plugin);
 
         registerBukkitCommands();
     }

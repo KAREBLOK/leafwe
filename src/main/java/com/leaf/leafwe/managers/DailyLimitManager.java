@@ -1,4 +1,10 @@
-package com.leaf.leafwe;
+package com.leaf.leafwe.managers;
+
+import com.leaf.leafwe.tasks.*;
+
+import com.leaf.leafwe.gui.*;
+
+import com.leaf.leafwe.LeafWE;
 
 import com.leaf.leafwe.database.DatabaseManager;
 import com.leaf.leafwe.database.DatabaseFactory;

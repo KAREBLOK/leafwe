@@ -1,4 +1,10 @@
-package com.leaf.leafwe;
+package com.leaf.leafwe.managers;
+
+import com.leaf.leafwe.tasks.*;
+
+import com.leaf.leafwe.gui.*;
+
+import com.leaf.leafwe.LeafWE;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -9,6 +15,9 @@ public class ProtectionManager {
     private boolean worldGuardEnabled = false;
     private boolean superiorSkyblockEnabled = false;
     private boolean townyEnabled = false;
+    private boolean landsEnabled = false;
+    private boolean griefPreventionEnabled = false;
+    private boolean plotSquaredEnabled = false;
     private final LeafWE plugin;
 
     public ProtectionManager(LeafWE plugin) {
@@ -20,6 +29,30 @@ public class ProtectionManager {
     }
 
     private void initializeHooks() {
+        Plugin gpPlugin = plugin.getServer().getPluginManager().getPlugin("GriefPrevention");
+        if (gpPlugin != null && gpPlugin.isEnabled()) {
+            this.griefPreventionEnabled = true;
+            plugin.getLogger().info("GriefPrevention hook enabled successfully.");
+        } else {
+            plugin.getLogger().info("GriefPrevention not found. Protection hook disabled.");
+        }
+
+        Plugin plotPlugin = plugin.getServer().getPluginManager().getPlugin("PlotSquared");
+        if (plotPlugin != null && plotPlugin.isEnabled()) {
+            this.plotSquaredEnabled = true;
+            plugin.getLogger().info("PlotSquared hook enabled successfully.");
+        } else {
+            plugin.getLogger().info("PlotSquared not found. Protection hook disabled.");
+        }
+
+        Plugin landsPlugin = plugin.getServer().getPluginManager().getPlugin("Lands");
+        if (landsPlugin != null && landsPlugin.isEnabled()) {
+            this.landsEnabled = true;
+            plugin.getLogger().info("Lands hook enabled successfully.");
+        } else {
+            plugin.getLogger().info("Lands not found. Protection hook disabled.");
+        }
+
         Plugin wgPlugin = plugin.getServer().getPluginManager().getPlugin("WorldGuard");
         plugin.getLogger().info("WorldGuard plugin check: " + (wgPlugin != null ? "Found" : "Not Found"));
 
@@ -80,7 +113,8 @@ public class ProtectionManager {
             plugin.getLogger().info("Towny not found. Protection hook disabled.");
         }
 
-        plugin.getLogger().info("Protection Manager Status: WG=" + worldGuardEnabled + ", SSB=" + superiorSkyblockEnabled + ", Towny=" + townyEnabled);
+        plugin.getLogger().info("Protection Manager Status: WG=" + worldGuardEnabled + ", SSB=" + superiorSkyblockEnabled + 
+                ", Towny=" + townyEnabled + ", Lands=" + landsEnabled + ", GP=" + griefPreventionEnabled + ", P2=" + plotSquaredEnabled);
     }
 
     public boolean canBuild(Player player, Location location) {
@@ -94,6 +128,45 @@ public class ProtectionManager {
         if (player.hasPermission("leafwe.bypass.protection")) {
             plugin.getLogger().info("Player has bypass permission - allowing");
             return true;
+        }
+
+        if (landsEnabled) {
+            try {
+                boolean canBuild = checkLandsPermission(player, location);
+                if (!canBuild) {
+                    player.sendMessage("§c[LeafWE] Lands: Build permission denied in this land!");
+                    return false;
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("Error checking Lands permissions: " + e.getMessage());
+                return false;
+            }
+        }
+
+        if (griefPreventionEnabled) {
+            try {
+                boolean canBuild = checkGriefPreventionPermission(player, location);
+                if (!canBuild) {
+                    player.sendMessage("§c[LeafWE] GriefPrevention: You don't have permission here!");
+                    return false;
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("Error checking GriefPrevention permissions: " + e.getMessage());
+                return false;
+            }
+        }
+
+        if (plotSquaredEnabled) {
+            try {
+                boolean canBuild = checkPlotSquaredPermission(player, location);
+                if (!canBuild) {
+                    player.sendMessage("§c[LeafWE] PlotSquared: You cannot build in this plot!");
+                    return false;
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("Error checking PlotSquared permissions: " + e.getMessage());
+                return false;
+            }
         }
 
         if (worldGuardEnabled) {
@@ -207,6 +280,72 @@ public class ProtectionManager {
         }
     }
 
+    private boolean checkLandsPermission(Player player, Location location) {
+        try {
+            me.angeschossen.lands.api.integration.LandsIntegration api = new me.angeschossen.lands.api.integration.LandsIntegration(plugin);
+            me.angeschossen.lands.api.land.Area area = api.getArea(location);
+            
+            if (area != null) {
+                // Check if player can place blocks (BLOCK_PLACE flag)
+                return area.hasFlag(player.getUniqueId(), me.angeschossen.lands.api.flags.Flags.BLOCK_PLACE);
+            } else {
+                // Check wilderness settings
+                // Usually wilderness allows everything unless restricted, but for safety we can check wilderness flags if needed.
+                // For now, if it's wilderness, we assume Lands doesn't block it (handled by other plugins or default server rules).
+                return true;
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("Lands permission check failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean checkGriefPreventionPermission(Player player, Location location) {
+        try {
+            me.ryanhamshire.GriefPrevention.DataStore dataStore = me.ryanhamshire.GriefPrevention.GriefPrevention.instance.dataStore;
+            me.ryanhamshire.GriefPrevention.Claim claim = dataStore.getClaimAt(location, true, null);
+
+            if (claim != null) {
+                String failureReason = claim.allowBuild(player, org.bukkit.Material.STONE); // Checking dummy build permission
+                return failureReason == null;
+            }
+            return true;
+        } catch (Exception e) {
+            plugin.getLogger().warning("GriefPrevention permission check failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean checkPlotSquaredPermission(Player player, Location location) {
+        try {
+            com.plotsquared.core.location.Location plotLoc = com.plotsquared.core.location.Location.at(
+                    location.getWorld().getName(), location.getBlockX(), location.getBlockY(), location.getBlockZ());
+            
+            com.plotsquared.core.plot.Plot plot = com.plotsquared.core.plot.Plot.getPlot(plotLoc);
+
+            if (plot != null) {
+                // Check if player is added to the plot or is the owner
+                return plot.isAdded(player.getUniqueId()) || plot.isOwner(player.getUniqueId());
+            }
+            
+            // If not in a plot, we need to check if building on roads/unclaimed areas is allowed.
+            // Usually P2 prevents building on roads. LeafWE should probably respect that.
+            // However, getting "Road" permission is complex. For safety, if it's a plot world but no plot, return false.
+            
+            com.plotsquared.core.PlotAPI plotAPI = new com.plotsquared.core.PlotAPI();
+            if (plotAPI.getPlotSquared().getPlotAreaManager().getPlotAreaByString(location.getWorld().getName()) != null) {
+                // It is a plot world, but no plot found at location -> Road or Unclaimed.
+                // Block editing on roads/unclaimed areas unless player has admin bypass (handled in canBuild main check)
+                return false;
+            }
+
+            return true;
+        } catch (Exception e) {
+            plugin.getLogger().warning("PlotSquared permission check failed: " + e.getMessage());
+            return false;
+        }
+    }
+
     public boolean isWorldGuardEnabled() {
         return worldGuardEnabled;
     }
@@ -217,5 +356,17 @@ public class ProtectionManager {
 
     public boolean isTownyEnabled() {
         return townyEnabled;
+    }
+
+    public boolean isLandsEnabled() {
+        return landsEnabled;
+    }
+
+    public boolean isGriefPreventionEnabled() {
+        return griefPreventionEnabled;
+    }
+
+    public boolean isPlotSquaredEnabled() {
+        return plotSquaredEnabled;
     }
 }

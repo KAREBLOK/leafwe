@@ -2,6 +2,16 @@ package com.leaf.leafwe.commands.impl;
 
 import com.leaf.leafwe.LeafWE;
 import com.leaf.leafwe.commands.BaseCommand;
+import com.leaf.leafwe.managers.ConfigManager;
+import com.leaf.leafwe.managers.ProtectionManager;
+import com.leaf.leafwe.managers.SelectionManager;
+import com.leaf.leafwe.managers.BlockstateManager;
+import com.leaf.leafwe.managers.UndoManager;
+import com.leaf.leafwe.managers.TaskManager;
+import com.leaf.leafwe.managers.DailyLimitManager;
+import com.leaf.leafwe.gui.GuiManager;
+import com.leaf.leafwe.gui.SelectionVisualizer;
+import com.leaf.leafwe.tasks.BlockPlacerTask;
 import com.leaf.leafwe.registry.ManagerRegistry;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
@@ -103,12 +113,12 @@ public class SetCommandImpl extends BaseCommand {
             if (!limitResult.canPerform) {
                 var usageInfo = ManagerRegistry.dailyLimit().getUsageInfo(player);
 
-                if (limitResult.limitType == com.leaf.leafwe.DailyLimitManager.LimitType.BLOCKS) {
+                if (limitResult.limitType == DailyLimitManager.LimitType.BLOCKS) {
                     player.sendMessage(ManagerRegistry.config().getDailyLimitBlocksExceeded()
                             .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedBlocks)))
                             .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxBlocks)))
                             .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
-                } else if (limitResult.limitType == com.leaf.leafwe.DailyLimitManager.LimitType.OPERATIONS) {
+                } else if (limitResult.limitType == DailyLimitManager.LimitType.OPERATIONS) {
                     player.sendMessage(ManagerRegistry.config().getDailyLimitOperationsExceeded()
                             .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedOperations)))
                             .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxOperations)))
@@ -158,7 +168,7 @@ public class SetCommandImpl extends BaseCommand {
                 ManagerRegistry.gui().setLastReplacedFrom(player, finalBlockType);
                 player.sendMessage(ManagerRegistry.config().getMessage("process-starting"));
 
-                com.leaf.leafwe.BlockPlacerTask task = new com.leaf.leafwe.BlockPlacerTask(
+                BlockPlacerTask task = new BlockPlacerTask(
                         plugin, player, locationsToFill, finalBlockType,
                         ManagerRegistry.config(), ManagerRegistry.visualizer(),
                         ManagerRegistry.task(), ManagerRegistry.blockstate()

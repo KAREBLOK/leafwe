@@ -7,7 +7,7 @@ description: A lightweight WorldEdit alternative for Minecraft servers
 website: https://kareblok.tc
 
 # Load after WorldGuard
-softdepend: [WorldGuard, SuperiorSkyblock2, Towny]
+softdepend: [WorldGuard, SuperiorSkyblock2, Towny, Lands, GriefPrevention, PlotSquared]
 
 commands:
   set:

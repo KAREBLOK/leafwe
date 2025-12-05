@@ -6,7 +6,7 @@
 
   <groupId>com.leaf</groupId>
   <artifactId>leafwe</artifactId>
-  <version>5.0.0</version>
+  <version>5.1.1</version>
   <packaging>jar</packaging>
 
   <name>LeafWE</name>
@@ -114,6 +114,12 @@
       <url>https://repo.bg-software.com/repository/api/</url>
     </repository>
 
+    <!-- JitPack Repository (Lands) -->
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
+    </repository>
+
     <!-- Sonatype Repository (fallback) -->
     <repository>
       <id>sonatype</id>
@@ -122,6 +128,36 @@
   </repositories>
 
   <dependencies>
+    <!-- Lands API -->
+    <dependency>
+      <groupId>com.github.angeschossen</groupId>
+      <artifactId>LandsAPI</artifactId>
+      <version>6.29.12</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- GriefPrevention -->
+    <dependency>
+      <groupId>com.github.TechFortress</groupId>
+      <artifactId>GriefPrevention</artifactId>
+      <version>16.18</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- PlotSquared -->
+    <dependency>
+      <groupId>com.plotsquared</groupId>
+      <artifactId>PlotSquared-Core</artifactId>
+      <version>6.11.1</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.sk89q.worldedit</groupId>
+          <artifactId>worldedit-core</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
     <!-- Paper API -->
     <dependency>
       <groupId>io.papermc.paper</groupId>
