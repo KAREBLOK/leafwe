@@ -9,6 +9,11 @@ website: https://kareblok.tc
 # Load after WorldGuard
 softdepend: [WorldGuard, SuperiorSkyblock2, Towny, Lands, GriefPrevention, PlotSquared]
 
+libraries:
+  - com.zaxxer:HikariCP:5.0.1
+  - org.xerial:sqlite-jdbc:3.42.0.0
+  - org.slf4j:slf4j-api:1.7.36
+
 commands:
   set:
     description: Fill selected area with blocks

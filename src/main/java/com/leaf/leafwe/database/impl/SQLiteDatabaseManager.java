@@ -64,6 +64,9 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     public CompletableFuture<Boolean> initialize() {
         return CompletableFuture.supplyAsync(() -> {
             try {
+                // Force load the driver class
+                Class.forName("org.sqlite.JDBC");
+
                 File dbFile = new File(plugin.getDataFolder(), databaseFile);
                 dbFile.getParentFile().mkdirs();
 
@@ -78,7 +81,7 @@ public class SQLiteDatabaseManager implements DatabaseManager {
                 plugin.getLogger().info("SQLite database initialized successfully: " + dbFile.getAbsolutePath());
                 return true;
 
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 plugin.getLogger().severe("Failed to initialize SQLite database: " + e.getMessage());
                 e.printStackTrace();
                 return false;
