@@ -212,6 +212,17 @@ wand-tool:
     - "&eLeafWE Construction Tool"
 
 # ===========================================
+# Wand Selection Effects
+# ===========================================
+
+wand-selection-effects:
+  enabled: true
+  pos1-sound: "ENTITY_EXPERIENCE_ORB_PICKUP"
+  pos2-sound: "ENTITY_EXPERIENCE_ORB_PICKUP"
+  pos1-particle: "VILLAGER_HAPPY"
+  pos1-particle-count: 10
+
+# ===========================================
 # GUI Configuration
 # ===========================================
 

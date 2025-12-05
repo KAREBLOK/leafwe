@@ -22,8 +22,8 @@ messages:
   # Selection & Pipette Messages
   select-pos1: '&cYou must select position 1 first! (Left-click with the construction rod)'
   select-pos2: '&cPosition 1 is set. Now select position 2! (Right-click with the construction rod)'
-  pos1-set: '&aPosition 1 has been set!'
-  pos2-set: '&aPosition 2 has been set!'
+  pos1-set: '&aPosition 1 has been set! &7(%x%, %y%, %z%)'
+  pos2-set: '&aPosition 2 has been set! &7(%x%, %y%, %z%)'
   blockstate-copied: '&aCopied block state of: &e%block%'
   blockstate-cleared: '&7Copied block state has been cleared.'
 

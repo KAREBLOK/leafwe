@@ -71,12 +71,28 @@ public class WandListener implements Listener {
                         .replaceText(config -> config.matchLiteral("%x%").replacement(String.valueOf(loc.getBlockX())))
                         .replaceText(config -> config.matchLiteral("%y%").replacement(String.valueOf(loc.getBlockY())))
                         .replaceText(config -> config.matchLiteral("%z%").replacement(String.valueOf(loc.getBlockZ()))));
+                
+                if (configManager.isWandEffectsEnabled()) {
+                    try {
+                        player.playSound(player.getLocation(), configManager.getPos1Sound(), 1.0f, 1.0f);
+                        if (configManager.getPos1Particle() != null) {
+                            player.spawnParticle(configManager.getPos1Particle(), loc.clone().add(0.5, 1.2, 0.5), configManager.getPos1ParticleCount(), 0.2, 0.2, 0.2, 0.0);
+                        }
+                    } catch (Exception ignored) {}
+                }
+
             } else {
                 selectionManager.setPosition2(player, loc);
                 player.sendMessage(configManager.getMessage("pos2-set")
                         .replaceText(config -> config.matchLiteral("%x%").replacement(String.valueOf(loc.getBlockX())))
                         .replaceText(config -> config.matchLiteral("%y%").replacement(String.valueOf(loc.getBlockY())))
                         .replaceText(config -> config.matchLiteral("%z%").replacement(String.valueOf(loc.getBlockZ()))));
+                
+                if (configManager.isWandEffectsEnabled()) {
+                    try {
+                        player.playSound(player.getLocation(), configManager.getPos2Sound(), 1.0f, 1.0f);
+                    } catch (Exception ignored) {}
+                }
             }
 
             selectionVisualizer.start(player);

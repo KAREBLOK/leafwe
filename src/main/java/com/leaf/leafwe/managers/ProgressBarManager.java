@@ -16,7 +16,7 @@ public class ProgressBarManager {
     private static final char COMPLETED_CHAR = '█';
     private static final char REMAINING_CHAR = '░';
 
-    public static void showProgress(Player player, int current, int total, String operation) {
+    public static void showProgress(Player player, int current, int total, Component operation) {
         if (player == null || !player.isOnline()) return;
 
         double percentage = total > 0 ? (double) current / total * 100 : 0;
@@ -31,11 +31,15 @@ public class ProgressBarManager {
                 .append(Component.text(" (", NamedTextColor.GRAY))
                 .append(Component.text(current + "/" + total, NamedTextColor.WHITE))
                 .append(Component.text(") ", NamedTextColor.GRAY))
-                .append(Component.text(operation, NamedTextColor.AQUA))
+                .append(operation)
                 .append(Component.text(" " + timeRemaining, NamedTextColor.DARK_GRAY))
                 .build();
 
         player.sendActionBar(actionBarMessage);
+    }
+
+    public static void showProgress(Player player, int current, int total, String operation) {
+        showProgress(player, current, total, Component.text(operation, NamedTextColor.AQUA));
     }
 
     private static String createProgressBar(double percentage) {

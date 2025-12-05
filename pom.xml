@@ -6,7 +6,7 @@
 
   <groupId>com.leaf</groupId>
   <artifactId>leafwe</artifactId>
-  <version>5.1.1</version>
+  <version>5.1.2</version>
   <packaging>jar</packaging>
 
   <name>LeafWE</name>
@@ -210,6 +210,13 @@
       <artifactId>SuperiorSkyblockAPI</artifactId>
       <version>2023.2</version>
       <scope>provided</scope>
+    </dependency>
+
+    <!-- SQLite Driver -->
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+      <version>3.42.0.0</version>
     </dependency>
   </dependencies>
 </project>

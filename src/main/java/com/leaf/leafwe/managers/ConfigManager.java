@@ -174,6 +174,45 @@ public class ConfigManager {
                 .collect(Collectors.toList());
     }
 
+    public boolean isWandEffectsEnabled() {
+        return config.getBoolean("wand-selection-effects.enabled", true);
+    }
+
+    public Sound getPos1Sound() {
+        try {
+            String soundName = config.getString("wand-selection-effects.pos1-sound", "ENTITY_EXPERIENCE_ORB_PICKUP").toUpperCase();
+            return Sound.valueOf(soundName);
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid pos1 sound: " + config.getString("wand-selection-effects.pos1-sound") + ". Using default.");
+            return Sound.ENTITY_EXPERIENCE_ORB_PICKUP;
+        }
+    }
+
+    public Sound getPos2Sound() {
+        try {
+            String soundName = config.getString("wand-selection-effects.pos2-sound", "ENTITY_EXPERIENCE_ORB_PICKUP").toUpperCase();
+            return Sound.valueOf(soundName);
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid pos2 sound: " + config.getString("wand-selection-effects.pos2-sound") + ". Using default.");
+            return Sound.ENTITY_EXPERIENCE_ORB_PICKUP;
+        }
+    }
+
+    public Particle getPos1Particle() {
+        try {
+            String particleName = config.getString("wand-selection-effects.pos1-particle", "VILLAGER_HAPPY").toUpperCase();
+            if (particleName.equalsIgnoreCase("NONE")) return null;
+            return Particle.valueOf(particleName);
+        } catch (IllegalArgumentException e) {
+            plugin.getLogger().warning("Invalid pos1 particle: " + config.getString("wand-selection-effects.pos1-particle") + ". Using default.");
+            return Particle.VILLAGER_HAPPY;
+        }
+    }
+
+    public int getPos1ParticleCount() {
+        return Math.max(1, config.getInt("wand-selection-effects.pos1-particle-count", 10));
+    }
+
     public boolean isWorkerAnimationEnabled() {
         return config.getBoolean("settings.worker-animation.enabled", true);
     }

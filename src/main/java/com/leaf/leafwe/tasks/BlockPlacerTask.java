@@ -78,6 +78,7 @@ public class BlockPlacerTask extends BukkitRunnable {
             } else {
                 currentLocation.getBlock().setType(material);
             }
+            currentLocation.getWorld().playSound(currentLocation, org.bukkit.Sound.BLOCK_STONE_PLACE, 0.5f, 1.0f);
 
             if (configManager.getPlacementParticle() != null) {
                 player.getWorld().spawnParticle(configManager.getPlacementParticle(), currentLocation.clone().add(0.5, 0.5, 0.5), 1, 0, 0, 0, 0);
@@ -86,10 +87,10 @@ public class BlockPlacerTask extends BukkitRunnable {
             blocksPlaced++;
         }
 
-        String operationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                .serialize(configManager.getProgressOperationPlacing());
-        ProgressBarManager.showProgress(player, blocksPlaced, totalBlocks,
-                operationText + " " + material.name().toLowerCase());
+        net.kyori.adventure.text.Component operationComp = configManager.getProgressOperationPlacing()
+                .append(net.kyori.adventure.text.Component.text(" "))
+                .append(net.kyori.adventure.text.Component.translatable(material.translationKey()));
+        ProgressBarManager.showProgress(player, blocksPlaced, totalBlocks, operationComp);
     }
 
     private void finishTask() {
