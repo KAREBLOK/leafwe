@@ -2,14 +2,20 @@
 
 **LeafWE**, Minecraft sunucuları için geliştirilmiş, oyuncu dostu ve performans odaklı bir **hafifletilmiş WorldEdit alternatifidir**. Sunucu sahiplerinin oyuncularına güvenli bir şekilde yapı düzenleme yetkisi vermesini sağlar.
 
-![Version](https://img.shields.io/badge/version-5.0.0-blue) ![Java](https://img.shields.io/badge/Java-17%2B-orange) ![Author](https://img.shields.io/badge/author-BaranMRJ-red)
+![Version](https://img.shields.io/badge/version-5.1.1-blue) ![Java](https://img.shields.io/badge/Java-17%2B-orange) ![Author](https://img.shields.io/badge/author-BaranMRJ-red)
 
 ---
 
 ## 🌟 Özellikler
 
 *   **🚀 Hafif ve Hızlı:** Sunucunuzu yormadan büyük alanlarda işlem yapabilme.
-*   **🛡️ Bölge Koruması:** **WorldGuard**, **SuperiorSkyblock2** ve **Towny** ile tam entegrasyon. Oyuncular sadece yetkili oldukları alanlarda (kendi adalarında veya towny arsalarında) işlem yapabilirler.
+*   **🛡️ Geniş Bölge Koruması:** Aşağıdaki eklentilerle tam entegrasyon sağlar. Oyuncular sadece kendi yetkili oldukları alanlarda işlem yapabilir:
+    *   **WorldGuard**
+    *   **SuperiorSkyblock2**
+    *   **Towny**
+    *   **Lands** 🆕
+    *   **GriefPrevention** 🆕
+    *   **PlotSquared** 🆕
 *   **⚡ Temel İşlemler:**
     *   **Set:** Seçili alanı belirli bir blokla doldurma.
     *   **Wall:** Seçili alanın etrafına duvar örme.
@@ -28,11 +34,15 @@ Bu eklentiyi çalıştırmak için sunucunuzda şunların bulunması önerilir:
 
 *   **Java:** 17 veya daha yenisi
 *   **Sunucu Yazılımı:** Paper, Spigot veya Purpur (1.19+)
-*   **Opsiyonel Eklentiler:**
+*   **Temel Gereksinim:**
     *   [WorldEdit](https://dev.bukkit.org/projects/worldedit) (Seçim işlemleri için gereklidir)
-    *   [WorldGuard](https://dev.bukkit.org/projects/worldguard) (Bölge koruması için)
-    *   [SuperiorSkyblock2](https://www.spigotmc.org/resources/superiorskyblock2.87411/) (Skyblock entegrasyonu için)
+*   **Desteklenen Koruma Eklentileri (Opsiyonel):**
+    *   [WorldGuard](https://dev.bukkit.org/projects/worldguard)
+    *   [SuperiorSkyblock2](https://www.spigotmc.org/resources/superiorskyblock2.87411/)
     *   Towny
+    *   [Lands](https://www.spigotmc.org/resources/lands.53313/)
+    *   [GriefPrevention](https://dev.bukkit.org/projects/griefprevention)
+    *   [PlotSquared](https://www.spigotmc.org/resources/plotsquared-v6.77506/)
 
 ---
 
@@ -62,7 +72,7 @@ Bu eklentiyi çalıştırmak için sunucunuzda şunların bulunması önerilir:
 | `leafwe.give` | `/lwe give` komutunu kullanma yetkisi. | OP |
 | `leafwe.reload` | Eklentiyi yenileme yetkisi. | OP |
 | `leafwe.bypass.limit` | Blok sayısı limitine takılmama yetkisi. | OP |
-| `leafwe.bypass.protection` | WG/Skyblock/Towny korumalarını yok sayma. | OP |
+| `leafwe.bypass.protection` | WG/Skyblock/Towny/Lands/GP korumalarını yok sayma. | OP |
 | `leafwe.*` | Eklentideki tüm yetkilere sahip olma. | OP |
 
 ---
