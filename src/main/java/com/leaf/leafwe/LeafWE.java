@@ -6,6 +6,7 @@ import com.leaf.leafwe.database.DatabaseFactory;
 import com.leaf.leafwe.database.DatabaseManager;
 import com.leaf.leafwe.database.migration.MigrationManager;
 import com.leaf.leafwe.registry.ManagerRegistry;
+import com.leaf.leafwe.utils.Metrics;
 import com.leaf.leafwe.utils.VersionManager;
 import com.leaf.leafwe.managers.*;
 import com.leaf.leafwe.gui.GuiManager;
@@ -52,6 +53,9 @@ public final class LeafWE extends JavaPlugin {
             getServer().getScheduler().runTaskLater(this, this::initializeDelayedHooks, 1L);
 
             performHealthCheck();
+
+            // Initialize bStats
+            new Metrics(this, 28242);
 
             getLogger().info(versionManager.getEnableMessage());
 
