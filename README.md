@@ -1,26 +1,85 @@
-# LeafWE
+# 🍃 LeafWE
 
-A lightweight WorldEdit alternative for Minecraft servers.
+**LeafWE**, Minecraft sunucuları için geliştirilmiş, oyuncu dostu ve performans odaklı bir **hafifletilmiş WorldEdit alternatifidir**. Sunucu sahiplerinin oyuncularına güvenli bir şekilde yapı düzenleme yetkisi vermesini sağlar.
 
-## Description
+![Version](https://img.shields.io/badge/version-5.0.0-blue) ![Java](https://img.shields.io/badge/Java-17%2B-orange) ![Author](https://img.shields.io/badge/author-BaranMRJ-red)
 
-LeafWE is a Minecraft plugin that provides a lightweight alternative to the popular WorldEdit plugin. It is designed to be efficient and easy to use, providing essential world editing features for server administrators.
+---
 
-## Features
+## 🌟 Özellikler
 
-*   Basic WorldEdit commands
-*   Integration with popular plugins like WorldGuard and SuperiorSkyblock
-*   Optimized for performance
+*   **🚀 Hafif ve Hızlı:** Sunucunuzu yormadan büyük alanlarda işlem yapabilme.
+*   **🛡️ Bölge Koruması:** **WorldGuard**, **SuperiorSkyblock2** ve **Towny** ile tam entegrasyon. Oyuncular sadece yetkili oldukları alanlarda (kendi adalarında veya towny arsalarında) işlem yapabilirler.
+*   **⚡ Temel İşlemler:**
+    *   **Set:** Seçili alanı belirli bir blokla doldurma.
+    *   **Wall:** Seçili alanın etrafına duvar örme.
+    *   **Replace:** Belirli blokları başkalarıyla değiştirme.
+*   **↩️ Güvenli Geri Alma (Undo):** Hatalı işlemleri `undo` komutu ile geri alabilme.
+*   **⚠️ Limit ve Onay Sistemi:**
+    *   Belirlenen blok sayısının üzerindeki işlemler için oyunculardan onay ister.
+    *   Her işlem için blok limiti belirleyerek sunucu performansını korur.
+*   **🎒 Envanter Kontrolü:** (Opsiyonel) İşlem yapılırken gerekli blokların oyuncu envanterinden alınmasını sağlar.
 
-## Dependencies
+---
 
-*   [Paper API](https://papermc.io/)
-*   [WorldGuard](https://dev.bukkit.org/projects/worldguard)
-*   [WorldEdit](https://dev.bukkit.org/projects/worldedit)
-*   [SuperiorSkyblock2](https://www.spigotmc.org/resources/superiorskyblock2-1-16-5-1-19-x-the-best-skyblock-plugin.87411/)
+## 📋 Gereksinimler
 
-## Installation
+Bu eklentiyi çalıştırmak için sunucunuzda şunların bulunması önerilir:
 
-1.  Download the latest version of the plugin.
-2.  Place the downloaded `.jar` file into your server's `plugins` folder.
-3.  Restart your server.
+*   **Java:** 17 veya daha yenisi
+*   **Sunucu Yazılımı:** Paper, Spigot veya Purpur (1.19+)
+*   **Opsiyonel Eklentiler:**
+    *   [WorldEdit](https://dev.bukkit.org/projects/worldedit) (Seçim işlemleri için gereklidir)
+    *   [WorldGuard](https://dev.bukkit.org/projects/worldguard) (Bölge koruması için)
+    *   [SuperiorSkyblock2](https://www.spigotmc.org/resources/superiorskyblock2.87411/) (Skyblock entegrasyonu için)
+    *   Towny
+
+---
+
+## 💻 Komutlar
+
+| Komut | Açıklama | Kullanım |
+| :--- | :--- | :--- |
+| `/set <blok>` | Seçili alanı belirtilen blokla doldurur. | `/set stone` |
+| `/wall <blok>` | Seçili alanın etrafına duvar örer. | `/wall glass` |
+| `/replace <eski> <yeni>` | Seçili alandaki `eski` bloğu `yeni` blokla değiştirir. | `/replace dirt grass_block` |
+| `/lwe undo` | Son yapılan işlemi geri alır. | `/lwe undo` |
+| `/lwe confirm` | Bekleyen büyük işlemi onaylar. | `/lwe confirm` |
+| `/lwe reload` | Yapılandırma dosyasını (config) yeniler. | `/lwe reload` |
+| `/lwe give <oyuncu>` | Oyuncuya "WorldEdit Baltası" verir. | `/lwe give BaranMRJ` |
+| `/lwe limits` | Kalan işlem limitinizi gösterir. | `/lwe limits` |
+
+---
+
+## 🔐 Yetkiler (Permissions)
+
+| Yetki | Açıklama | Varsayılan |
+| :--- | :--- | :--- |
+| `leafwe.use` | `/set` komutunu kullanma yetkisi. | Herkes |
+| `leafwe.wall` | `/wall` komutunu kullanma yetkisi. | Herkes |
+| `leafwe.replace` | `/replace` komutunu kullanma yetkisi. | Herkes |
+| `leafwe.undo` | İşlemleri geri alma yetkisi. | Herkes |
+| `leafwe.give` | `/lwe give` komutunu kullanma yetkisi. | OP |
+| `leafwe.reload` | Eklentiyi yenileme yetkisi. | OP |
+| `leafwe.bypass.limit` | Blok sayısı limitine takılmama yetkisi. | OP |
+| `leafwe.bypass.protection` | WG/Skyblock/Towny korumalarını yok sayma. | OP |
+| `leafwe.*` | Eklentideki tüm yetkilere sahip olma. | OP |
+
+---
+
+## ⚙️ Kurulum
+
+1.  **LeafWE** `.jar` dosyasını indirin.
+2.  Dosyayı sunucunuzun `plugins` klasörüne atın.
+3.  Sunucuyu yeniden başlatın.
+4.  `config.yml` dosyasından limitleri ve mesajları dilediğiniz gibi düzenleyin.
+5.  `/lwe reload` komutu ile değişiklikleri uygulayın.
+
+---
+
+<div align="center">
+
+**Geliştirici:** [KAREBLOK](https://github.com/KAREBLOK)  
+**Web Sitesi:** [kareblok.tc](https://kareblok.tc)
+
+</div>
