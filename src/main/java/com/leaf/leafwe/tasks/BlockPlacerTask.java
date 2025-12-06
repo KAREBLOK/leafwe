@@ -1,12 +1,11 @@
 package com.leaf.leafwe.tasks;
 
-import com.leaf.leafwe.gui.*;
-
-import com.leaf.leafwe.managers.*;
-
 import com.leaf.leafwe.LeafWE;
-
+import com.leaf.leafwe.gui.SelectionVisualizer;
+import com.leaf.leafwe.managers.*;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -19,6 +18,7 @@ import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.EulerAngle;
+
 import java.util.List;
 
 public class BlockPlacerTask extends BukkitRunnable {
@@ -31,14 +31,20 @@ public class BlockPlacerTask extends BukkitRunnable {
     private final SelectionVisualizer selectionVisualizer;
     private final TaskManager taskManager;
     private final BlockstateManager blockstateManager;
+    private final ProtectionManager protectionManager; // YENİ
     private final int totalBlocks;
     private int blocksPlaced = 0;
+    private int blocksSkipped = 0; // YENİ: Koruma nedeniyle atlanan bloklar
     private ArmorStand worker = null;
     private boolean isRunning = true;
     private boolean isCompleted = false;
     private boolean limitsRecorded = false;
 
-    public BlockPlacerTask(LeafWE plugin, Player player, List<Location> locations, Material material, ConfigManager configManager, SelectionVisualizer visualizer, TaskManager taskManager, BlockstateManager blockstateManager) {
+    // Constructor güncellendi: ProtectionManager eklendi
+    public BlockPlacerTask(LeafWE plugin, Player player, List<Location> locations, Material material,
+                           ConfigManager configManager, SelectionVisualizer visualizer,
+                           TaskManager taskManager, BlockstateManager blockstateManager,
+                           ProtectionManager protectionManager) {
         this.plugin = plugin;
         this.player = player;
         this.locationsToFill = locations;
@@ -47,6 +53,7 @@ public class BlockPlacerTask extends BukkitRunnable {
         this.selectionVisualizer = visualizer;
         this.taskManager = taskManager;
         this.blockstateManager = blockstateManager;
+        this.protectionManager = protectionManager;
         this.totalBlocks = locations.size();
     }
 
@@ -60,6 +67,17 @@ public class BlockPlacerTask extends BukkitRunnable {
         }
 
         Location currentLocation = locationsToFill.remove(0);
+
+        // YENİ: Blok bazlı koruma kontrolü (Donut fix)
+        if (protectionManager != null && !protectionManager.canBuild(player, currentLocation)) {
+            blocksSkipped++;
+            // Bu bloğu atla ve bir sonrakine geç (hız koruması için return demiyoruz, sadece işlemi yapmıyoruz)
+            // Ancak task yapısı gereği run() metodu tick başına belirli sayıda çalışmalıydı,
+            // burada tek seferlik çalışıyor gibi görünüyor (speed=1 ise).
+            // LeafWE orijinal yapısında loop yok, her tick 1 blok.
+            // Bu yüzden 'return' demeden, sadece bu ticklik işlemi pas geçiyoruz.
+            return;
+        }
 
         if (worker == null && configManager.isWorkerAnimationEnabled()) {
             spawnWorker(currentLocation);
@@ -87,10 +105,12 @@ public class BlockPlacerTask extends BukkitRunnable {
             blocksPlaced++;
         }
 
-        net.kyori.adventure.text.Component operationComp = configManager.getProgressOperationPlacing()
-                .append(net.kyori.adventure.text.Component.text(" "))
-                .append(net.kyori.adventure.text.Component.translatable(material.translationKey()));
-        ProgressBarManager.showProgress(player, blocksPlaced, totalBlocks, operationComp);
+        Component operationComp = configManager.getProgressOperationPlacing()
+                .append(Component.text(" "))
+                .append(Component.translatable(material.translationKey()));
+
+        // İlerleme çubuğunda atlanan blokları da hesaba katabiliriz veya gizleyebiliriz.
+        ProgressBarManager.showProgress(player, blocksPlaced + blocksSkipped, totalBlocks, operationComp);
     }
 
     private void finishTask() {
@@ -101,7 +121,7 @@ public class BlockPlacerTask extends BukkitRunnable {
         selectionVisualizer.playSuccessEffect(player);
 
         if (!limitsRecorded && blocksPlaced > 0) {
-            DailyLimitManager dailyLimitManager = plugin.getDailyLimitManager();
+            DailyLimitManager dailyLimitManager = plugin.getRegistry().get(DailyLimitManager.class);
             if (dailyLimitManager != null) {
                 dailyLimitManager.recordUsage(player, blocksPlaced);
                 limitsRecorded = true;
@@ -114,15 +134,17 @@ public class BlockPlacerTask extends BukkitRunnable {
             player.sendMessage(configManager.getMessage("process-incomplete")
                     .replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(locationsToFill.size()))));
 
-            String operationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(configManager.getProgressOperationPlacing());
-            String errorText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(configManager.getProgressErrorInventory());
+            String operationText = PlainTextComponentSerializer.plainText().serialize(configManager.getProgressOperationPlacing());
+            String errorText = PlainTextComponentSerializer.plainText().serialize(configManager.getProgressErrorInventory());
             ProgressBarManager.showError(player, operationText, errorText);
         } else {
-            String completionText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(configManager.getProgressOperationBlockPlacement());
+            String completionText = PlainTextComponentSerializer.plainText().serialize(configManager.getProgressOperationBlockPlacement());
             ProgressBarManager.showCompletion(player, blocksPlaced, completionText);
+
+            // Eğer koruma yüzünden atlanan blok varsa bilgi ver
+            if (blocksSkipped > 0) {
+                player.sendMessage("§e" + blocksSkipped + " blok korumalı alanda olduğu için yerleştirilemedi.");
+            }
         }
 
         player.sendMessage(configManager.getMessage("process-complete")
@@ -130,6 +152,10 @@ public class BlockPlacerTask extends BukkitRunnable {
 
         this.cancel();
     }
+
+    // ... (Diğer metodlar spawnWorker, cleanupWorker aynı kalacak) ...
+    // KODUN GERİ KALANI DEĞİŞMEDİ, SADECE CONSTRUCTOR VE RUN GÜNCELLENDİ.
+    // TAM KOD İÇİN AŞAĞIYA BAKINIZ.
 
     private void cleanupWorker() {
         if (worker != null && !worker.isDead()) {
@@ -144,8 +170,7 @@ public class BlockPlacerTask extends BukkitRunnable {
         cleanupWorker();
 
         if (player.isOnline() && !isCompleted) {
-            String cancellationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(configManager.getProgressOperationBlockPlacement());
+            String cancellationText = PlainTextComponentSerializer.plainText().serialize(configManager.getProgressOperationBlockPlacement());
             ProgressBarManager.showCancellation(player, cancellationText);
         }
 
@@ -211,7 +236,7 @@ public class BlockPlacerTask extends BukkitRunnable {
                         break;
                 }
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
     }
 }

@@ -195,7 +195,8 @@ public class ReplaceCommandImpl extends BaseCommand {
                 ReplaceTask task = new ReplaceTask(
                         plugin, player, locationsToFill, finalToBlock,
                         ManagerRegistry.config(), ManagerRegistry.visualizer(),
-                        ManagerRegistry.task(), ManagerRegistry.blockstate()
+                        ManagerRegistry.task(), ManagerRegistry.blockstate(),
+                        ManagerRegistry.protection()
                 );
                 task.runTaskTimer(plugin, 2L, ManagerRegistry.config().getSpeed());
                 ManagerRegistry.task().startTask(player, task);
