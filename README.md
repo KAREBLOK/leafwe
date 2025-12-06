@@ -5,7 +5,7 @@
 ![Version](https://img.shields.io/badge/version-5.1.2-blue) ![Java](https://img.shields.io/badge/Java-17%2B-orange) ![Author](https://img.shields.io/badge/author-BaranMRJ-red)
 
 ---
-dc
+
 ## 🌟 Özellikler
 
 *   **🚀 Hafif ve Hızlı:** Sunucunuzu yormadan büyük alanlarda işlem yapabilme.
