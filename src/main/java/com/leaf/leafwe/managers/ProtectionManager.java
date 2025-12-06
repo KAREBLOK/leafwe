@@ -1,16 +1,20 @@
 package com.leaf.leafwe.managers;
 
-import com.leaf.leafwe.tasks.*;
-
-import com.leaf.leafwe.gui.*;
-
 import com.leaf.leafwe.LeafWE;
-
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Objects;
+import java.util.UUID;
 
 public class ProtectionManager {
+
+    private final LeafWE plugin;
 
     private boolean worldGuardEnabled = false;
     private boolean superiorSkyblockEnabled = false;
@@ -18,7 +22,14 @@ public class ProtectionManager {
     private boolean landsEnabled = false;
     private boolean griefPreventionEnabled = false;
     private boolean plotSquaredEnabled = false;
-    private final LeafWE plugin;
+
+    private Object townyAPIInstance;
+    private Method townyTestPermissionMethod;
+    private Object townyBuildAction;
+
+    private Object landsIntegrationInstance;
+    private Method landsGetAreaMethod;
+    private Object landsBlockPlaceFlag;
 
     public ProtectionManager(LeafWE plugin) {
         this.plugin = plugin;
@@ -29,192 +40,138 @@ public class ProtectionManager {
     }
 
     private void initializeHooks() {
-        Plugin gpPlugin = plugin.getServer().getPluginManager().getPlugin("GriefPrevention");
-        if (gpPlugin != null && gpPlugin.isEnabled()) {
+        PluginManager pm = plugin.getServer().getPluginManager();
+
+        if (pm.getPlugin("GriefPrevention") != null && Objects.requireNonNull(pm.getPlugin("GriefPrevention")).isEnabled()) {
             this.griefPreventionEnabled = true;
-            plugin.getLogger().info("GriefPrevention hook enabled successfully.");
-        } else {
-            plugin.getLogger().info("GriefPrevention not found. Protection hook disabled.");
+            plugin.getLogger().info("GriefPrevention hook enabled.");
         }
 
-        Plugin plotPlugin = plugin.getServer().getPluginManager().getPlugin("PlotSquared");
-        if (plotPlugin != null && plotPlugin.isEnabled()) {
+        if (pm.getPlugin("PlotSquared") != null && Objects.requireNonNull(pm.getPlugin("PlotSquared")).isEnabled()) {
             this.plotSquaredEnabled = true;
-            plugin.getLogger().info("PlotSquared hook enabled successfully.");
-        } else {
-            plugin.getLogger().info("PlotSquared not found. Protection hook disabled.");
+            plugin.getLogger().info("PlotSquared hook enabled.");
         }
 
-        Plugin landsPlugin = plugin.getServer().getPluginManager().getPlugin("Lands");
-        if (landsPlugin != null && landsPlugin.isEnabled()) {
-            this.landsEnabled = true;
-            plugin.getLogger().info("Lands hook enabled successfully.");
-        } else {
-            plugin.getLogger().info("Lands not found. Protection hook disabled.");
+        if (pm.getPlugin("Lands") != null && Objects.requireNonNull(pm.getPlugin("Lands")).isEnabled()) {
+            try {
+                Class<?> integrationClass = Class.forName("me.angeschossen.lands.api.integration.LandsIntegration");
+                Constructor<?> constructor = integrationClass.getConstructor(Plugin.class);
+                this.landsIntegrationInstance = constructor.newInstance(plugin);
+
+                this.landsGetAreaMethod = integrationClass.getMethod("getArea", Location.class);
+
+                Class<?> flagsClass = Class.forName("me.angeschossen.lands.api.flags.Flags");
+                Field blockPlaceField = flagsClass.getField("BLOCK_PLACE");
+                this.landsBlockPlaceFlag = blockPlaceField.get(null);
+
+                this.landsEnabled = true;
+                plugin.getLogger().info("Lands hook enabled (Optimized).");
+            } catch (Exception e) {
+                plugin.getLogger().warning("Lands found but failed to initialize hook: " + e.getMessage());
+                this.landsEnabled = false;
+            }
         }
 
-        Plugin wgPlugin = plugin.getServer().getPluginManager().getPlugin("WorldGuard");
-        plugin.getLogger().info("WorldGuard plugin check: " + (wgPlugin != null ? "Found" : "Not Found"));
-
-        if (wgPlugin != null) {
-            plugin.getLogger().info("WorldGuard enabled status: " + wgPlugin.isEnabled());
-            plugin.getLogger().info("WorldGuard version: " + wgPlugin.getName() + " v" + wgPlugin.getDescription().getName());
-
+        Plugin wgPlugin = pm.getPlugin("WorldGuard");
+        if (wgPlugin != null && wgPlugin.isEnabled()) {
             try {
                 Class.forName("com.sk89q.worldguard.WorldGuard");
-                plugin.getLogger().info("WorldGuard main class loaded successfully");
-
-                Class.forName("com.sk89q.worldguard.bukkit.WorldGuardPlugin");
-                plugin.getLogger().info("WorldGuardPlugin class loaded successfully");
-
-                com.sk89q.worldguard.WorldGuard wgInstance = com.sk89q.worldguard.WorldGuard.getInstance();
-                plugin.getLogger().info("WorldGuard instance obtained: " + (wgInstance != null));
-
                 this.worldGuardEnabled = true;
-                plugin.getLogger().info("WorldGuard hook enabled successfully.");
-            } catch (ClassNotFoundException e) {
-                plugin.getLogger().warning("WorldGuard found but incompatible version detected: " + e.getMessage());
-                this.worldGuardEnabled = false;
+                plugin.getLogger().info("WorldGuard hook enabled.");
             } catch (Exception e) {
                 plugin.getLogger().warning("WorldGuard integration error: " + e.getMessage());
-                e.printStackTrace();
                 this.worldGuardEnabled = false;
             }
-
-        } else {
-            plugin.getLogger().info("WorldGuard not found. Protection hook disabled.");
         }
 
-        Plugin ssbPlugin = plugin.getServer().getPluginManager().getPlugin("SuperiorSkyblock2");
-        if (ssbPlugin != null && ssbPlugin.isEnabled()) {
+        if (pm.getPlugin("SuperiorSkyblock2") != null && Objects.requireNonNull(pm.getPlugin("SuperiorSkyblock2")).isEnabled()) {
             try {
                 Class.forName("com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI");
                 this.superiorSkyblockEnabled = true;
-                plugin.getLogger().info("SuperiorSkyblock2 hook enabled successfully.");
+                plugin.getLogger().info("SuperiorSkyblock2 hook enabled.");
             } catch (ClassNotFoundException e) {
-                plugin.getLogger().warning("SuperiorSkyblock2 found but API not available: " + e.getMessage());
                 this.superiorSkyblockEnabled = false;
             }
-        } else {
-            plugin.getLogger().info("SuperiorSkyblock2 not found. Protection hook disabled.");
         }
 
-        Plugin townyPlugin = plugin.getServer().getPluginManager().getPlugin("Towny");
-        if (townyPlugin != null && townyPlugin.isEnabled()) {
+        if (pm.getPlugin("Towny") != null && Objects.requireNonNull(pm.getPlugin("Towny")).isEnabled()) {
             try {
-                Class.forName("com.palmergames.bukkit.towny.TownyAPI");
+                Class<?> townyAPIClass = Class.forName("com.palmergames.bukkit.towny.TownyAPI");
+                Method getInstanceMethod = townyAPIClass.getMethod("getInstance");
+                this.townyAPIInstance = getInstanceMethod.invoke(null);
+
+                Class<?> actionTypeClass = Class.forName("com.palmergames.bukkit.towny.object.TownyPermission$ActionType");
+                Field buildField = actionTypeClass.getField("BUILD");
+                this.townyBuildAction = buildField.get(null);
+
+                this.townyTestPermissionMethod = townyAPIClass.getMethod("testPermission",
+                        org.bukkit.entity.Player.class,
+                        org.bukkit.Location.class,
+                        actionTypeClass);
+
                 this.townyEnabled = true;
-                plugin.getLogger().info("Towny hook enabled successfully.");
-            } catch (ClassNotFoundException e) {
-                plugin.getLogger().warning("Towny found but API not available: " + e.getMessage());
+                plugin.getLogger().info("Towny hook enabled (Optimized).");
+            } catch (Exception e) {
+                plugin.getLogger().warning("Towny found but failed to initialize hook: " + e.getMessage());
                 this.townyEnabled = false;
             }
-        } else {
-            plugin.getLogger().info("Towny not found. Protection hook disabled.");
         }
-
-        plugin.getLogger().info("Protection Manager Status: WG=" + worldGuardEnabled + ", SSB=" + superiorSkyblockEnabled + 
-                ", Towny=" + townyEnabled + ", Lands=" + landsEnabled + ", GP=" + griefPreventionEnabled + ", P2=" + plotSquaredEnabled);
     }
 
     public boolean canBuild(Player player, Location location) {
-        if (player == null || location == null) {
-            return false;
-        }
+        if (player == null || location == null) return false;
 
-        plugin.getLogger().info("Checking build permission for " + player.getName() +
-                " at " + location.getBlockX() + "," + location.getBlockY() + "," + location.getBlockZ());
-
-        if (player.hasPermission("leafwe.bypass.protection")) {
-            plugin.getLogger().info("Player has bypass permission - allowing");
-            return true;
-        }
+        if (player.hasPermission("leafwe.bypass.protection")) return true;
 
         if (landsEnabled) {
-            try {
-                boolean canBuild = checkLandsPermission(player, location);
-                if (!canBuild) {
-                    player.sendMessage("§c[LeafWE] Lands: Build permission denied in this land!");
-                    return false;
-                }
-            } catch (Exception e) {
-                plugin.getLogger().warning("Error checking Lands permissions: " + e.getMessage());
+            if (!checkLandsPermission(player, location)) {
                 return false;
             }
         }
 
         if (griefPreventionEnabled) {
-            try {
-                boolean canBuild = checkGriefPreventionPermission(player, location);
-                if (!canBuild) {
-                    player.sendMessage("§c[LeafWE] GriefPrevention: You don't have permission here!");
-                    return false;
-                }
-            } catch (Exception e) {
-                plugin.getLogger().warning("Error checking GriefPrevention permissions: " + e.getMessage());
-                return false;
-            }
+            if (!checkGriefPreventionPermission(player, location)) return false;
         }
 
         if (plotSquaredEnabled) {
-            try {
-                boolean canBuild = checkPlotSquaredPermission(player, location);
-                if (!canBuild) {
-                    player.sendMessage("§c[LeafWE] PlotSquared: You cannot build in this plot!");
-                    return false;
-                }
-            } catch (Exception e) {
-                plugin.getLogger().warning("Error checking PlotSquared permissions: " + e.getMessage());
-                return false;
-            }
+            if (!checkPlotSquaredPermission(player, location)) return false;
         }
 
         if (worldGuardEnabled) {
-            plugin.getLogger().info("Checking WorldGuard permissions...");
-            try {
-                boolean canBuild = checkWorldGuardPermission(player, location);
-                plugin.getLogger().info("WorldGuard result: " + canBuild);
-                if (!canBuild) {
-                    player.sendMessage("§c[LeafWE] WorldGuard: Build permission denied in this region!");
-                    return false;
-                }
-            } catch (Exception e) {
-                plugin.getLogger().warning("Error checking WorldGuard permissions: " + e.getMessage());
-                e.printStackTrace();
-                return false;
-            }
-        } else {
-            plugin.getLogger().info("WorldGuard disabled - allowing");
+            if (!checkWorldGuardPermission(player, location)) return false;
         }
 
         if (superiorSkyblockEnabled) {
-            try {
-                boolean canBuild = checkSuperiorSkyblockPermission(player, location);
-                if (!canBuild) {
-                    player.sendMessage("§c[LeafWE] SuperiorSkyblock: Build permission denied!");
-                    return false;
-                }
-            } catch (Exception e) {
-                plugin.getLogger().warning("Error checking SuperiorSkyblock permissions: " + e.getMessage());
-                return false;
-            }
+            if (!checkSuperiorSkyblockPermission(player, location)) return false;
         }
 
         if (townyEnabled) {
-            try {
-                boolean canBuild = checkTownyPermission(player, location);
-                if (!canBuild) {
-                    player.sendMessage("§c[LeafWE] Towny: Build permission denied in this town!");
-                    return false;
-                }
-            } catch (Exception e) {
-                plugin.getLogger().warning("Error checking Towny permissions: " + e.getMessage());
-                return false;
-            }
+            return checkTownyPermission(player, location);
         }
 
-        plugin.getLogger().info("All checks passed - allowing build");
         return true;
+    }
+
+    private boolean checkTownyPermission(Player player, Location location) {
+        try {
+            return (boolean) townyTestPermissionMethod.invoke(townyAPIInstance, player, location, townyBuildAction);
+        } catch (Exception e) {
+            plugin.getLogger().warning("Towny check error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean checkLandsPermission(Player player, Location location) {
+        try {
+            Object area = landsGetAreaMethod.invoke(landsIntegrationInstance, location);
+            if (area != null) {
+                Method hasFlag = area.getClass().getMethod("hasFlag", UUID.class, landsBlockPlaceFlag.getClass().getSuperclass());
+                return (boolean) hasFlag.invoke(area, player.getUniqueId(), landsBlockPlaceFlag);
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean checkWorldGuardPermission(Player player, Location location) {
@@ -231,7 +188,6 @@ public class ProtectionManager {
                     com.sk89q.worldguard.protection.flags.Flags.BUILD
             );
         } catch (Exception e) {
-            plugin.getLogger().warning("WorldGuard permission check failed: " + e.getMessage());
             return false;
         }
     }
@@ -246,88 +202,24 @@ public class ProtectionManager {
                         com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI.getPlayer(player);
                 return island.isMember(superiorPlayer);
             } else {
-                if (com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI.getGrid()
-                        .isIslandsWorld(location.getWorld())) {
-                    return false;
-                }
+                return !com.bgsoftware.superiorskyblock.api.SuperiorSkyblockAPI.getGrid().isIslandsWorld(location.getWorld());
             }
-            return true;
         } catch (Exception e) {
-            plugin.getLogger().warning("SuperiorSkyblock permission check failed: " + e.getMessage());
             return false;
         }
     }
 
-    private boolean checkTownyPermission(Player player, Location location) {
-        try {
-            Class<?> townyAPIClass = Class.forName("com.palmergames.bukkit.towny.TownyAPI");
-            Object townyAPI = townyAPIClass.getMethod("getInstance").invoke(null);
-
-            Class<?> actionTypeClass = Class.forName("com.palmergames.bukkit.towny.object.TownyPermission$ActionType");
-            Object buildAction = actionTypeClass.getField("BUILD").get(null);
-
-            boolean canBuild = (boolean) townyAPIClass.getMethod("testPermission",
-                            org.bukkit.entity.Player.class,
-                            org.bukkit.Location.class,
-                            actionTypeClass)
-                    .invoke(townyAPI, player, location, buildAction);
-
-            return canBuild;
-
-        } catch (Exception e) {
-            plugin.getLogger().warning("Towny permission check failed: " + e.getMessage());
-            return false;
-        }
-    }
-
-    private boolean checkLandsPermission(Player player, Location location) {
-        try {
-            Class<?> integrationClass = Class.forName("me.angeschossen.lands.api.integration.LandsIntegration");
-            java.lang.reflect.Constructor<?> constructor = integrationClass.getConstructor(Plugin.class);
-            Object integration = constructor.newInstance(plugin);
-
-            java.lang.reflect.Method getAreaMethod = integrationClass.getMethod("getArea", Location.class);
-            Object area = getAreaMethod.invoke(integration, location);
-
-            if (area != null) {
-                Class<?> flagsClass = Class.forName("me.angeschossen.lands.api.flags.Flags");
-                Object blockPlaceFlag = flagsClass.getField("BLOCK_PLACE").get(null);
-
-                java.lang.reflect.Method hasFlagMethod = area.getClass().getMethod("hasFlag", java.util.UUID.class, flagsClass.getSuperclass()); // Flags implements Flag, so usually we pass the specific flag object
-                // Actually in Lands API hasFlag takes (UUID, Flag)
-                // Let's use a safer approach with method search if possible or exact signature
-                
-                // Re-checking Lands API: Area.hasFlag(UUID player, Flag flag)
-                // Flag is an interface/class. 
-                // Let's try to find the method dynamically to be safe
-                
-                for (java.lang.reflect.Method method : area.getClass().getMethods()) {
-                     if (method.getName().equals("hasFlag") && method.getParameterCount() == 2) {
-                         return (boolean) method.invoke(area, player.getUniqueId(), blockPlaceFlag);
-                     }
-                }
-                return true; // Fallback if method not found
-            }
-            return true;
-        } catch (Exception e) {
-            plugin.getLogger().warning("Lands permission check failed: " + e.getMessage());
-            return false; // If error (like Lands not found despite check), deny for safety or allow? 
-            // Actually original code returned false on catch, let's stick to false for safety if check fails but plugin was enabled.
-        }
-    }
-
+    @SuppressWarnings("deprecation")
     private boolean checkGriefPreventionPermission(Player player, Location location) {
         try {
             me.ryanhamshire.GriefPrevention.DataStore dataStore = me.ryanhamshire.GriefPrevention.GriefPrevention.instance.dataStore;
             me.ryanhamshire.GriefPrevention.Claim claim = dataStore.getClaimAt(location, true, null);
 
             if (claim != null) {
-                String failureReason = claim.allowBuild(player, org.bukkit.Material.STONE); // Checking dummy build permission
-                return failureReason == null;
+                return claim.allowBuild(player, org.bukkit.Material.STONE) == null;
             }
             return true;
         } catch (Exception e) {
-            plugin.getLogger().warning("GriefPrevention permission check failed: " + e.getMessage());
             return false;
         }
     }
@@ -336,53 +228,24 @@ public class ProtectionManager {
         try {
             com.plotsquared.core.location.Location plotLoc = com.plotsquared.core.location.Location.at(
                     location.getWorld().getName(), location.getBlockX(), location.getBlockY(), location.getBlockZ());
-            
+
             com.plotsquared.core.plot.Plot plot = com.plotsquared.core.plot.Plot.getPlot(plotLoc);
 
             if (plot != null) {
-                // Check if player is added to the plot or is the owner
                 return plot.isAdded(player.getUniqueId()) || plot.isOwner(player.getUniqueId());
             }
-            
-            // If not in a plot, we need to check if building on roads/unclaimed areas is allowed.
-            // Usually P2 prevents building on roads. LeafWE should probably respect that.
-            // However, getting "Road" permission is complex. For safety, if it's a plot world but no plot, return false.
-            
-            com.plotsquared.core.PlotAPI plotAPI = new com.plotsquared.core.PlotAPI();
-            if (plotAPI.getPlotSquared().getPlotAreaManager().getPlotAreaByString(location.getWorld().getName()) != null) {
-                // It is a plot world, but no plot found at location -> Road or Unclaimed.
-                // Block editing on roads/unclaimed areas unless player has admin bypass (handled in canBuild main check)
-                return false;
-            }
 
-            return true;
+            return new com.plotsquared.core.PlotAPI().getPlotSquared().getPlotAreaManager()
+                    .getPlotAreaByString(location.getWorld().getName()) == null;
         } catch (Exception e) {
-            plugin.getLogger().warning("PlotSquared permission check failed: " + e.getMessage());
             return false;
         }
     }
 
-    public boolean isWorldGuardEnabled() {
-        return worldGuardEnabled;
-    }
-
-    public boolean isSuperiorSkyblockEnabled() {
-        return superiorSkyblockEnabled;
-    }
-
-    public boolean isTownyEnabled() {
-        return townyEnabled;
-    }
-
-    public boolean isLandsEnabled() {
-        return landsEnabled;
-    }
-
-    public boolean isGriefPreventionEnabled() {
-        return griefPreventionEnabled;
-    }
-
-    public boolean isPlotSquaredEnabled() {
-        return plotSquaredEnabled;
-    }
+    public boolean isWorldGuardEnabled() { return worldGuardEnabled; }
+    public boolean isSuperiorSkyblockEnabled() { return superiorSkyblockEnabled; }
+    public boolean isTownyEnabled() { return townyEnabled; }
+    public boolean isLandsEnabled() { return landsEnabled; }
+    public boolean isGriefPreventionEnabled() { return griefPreventionEnabled; }
+    public boolean isPlotSquaredEnabled() { return plotSquaredEnabled; }
 }
