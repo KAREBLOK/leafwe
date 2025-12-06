@@ -1,18 +1,14 @@
 package com.leaf.leafwe.tasks;
 
-import com.leaf.leafwe.gui.*;
-
-import com.leaf.leafwe.managers.*;
-
-import com.leaf.leafwe.LeafWE;
-
+import com.leaf.leafwe.managers.ConfigManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.data.BlockData;
+import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,13 +16,13 @@ import java.util.Map;
 public class UndoTask extends BukkitRunnable {
 
     private final Player player;
-    private final List<Map.Entry<Location, BlockData>> changes;
+    private final List<Map.Entry<Location, BlockState>> changes;
     private final ConfigManager configManager;
     private int refundedItems = 0;
     private int blocksRestored = 0;
     private boolean isRunning = true;
 
-    public UndoTask(Player player, Map<Location, BlockData> changeMap, ConfigManager configManager) {
+    public UndoTask(Player player, Map<Location, BlockState> changeMap, ConfigManager configManager) {
         this.player = player;
         this.changes = new ArrayList<>(changeMap.entrySet());
         this.configManager = configManager;
@@ -49,37 +45,32 @@ public class UndoTask extends BukkitRunnable {
 
         while (blocksToRestore < maxBlocksPerTick && !changes.isEmpty()) {
             try {
-                Map.Entry<Location, BlockData> entry = changes.remove(0);
+                Map.Entry<Location, BlockState> entry = changes.remove(0);
                 Location location = entry.getKey();
-                BlockData oldBlockData = entry.getValue();
+                BlockState oldState = entry.getValue();
 
-                if (location == null || oldBlockData == null) {
+                if (location == null || oldState == null) {
                     continue;
                 }
 
                 Block currentBlock = location.getBlock();
-                if (currentBlock == null) {
-                    continue;
-                }
+                Material currentMaterial = currentBlock.getType();
 
-                Material newMaterial = currentBlock.getType();
-
-                if (newMaterial != oldBlockData.getMaterial() && newMaterial != Material.AIR) {
+                if (currentMaterial != oldState.getType() && currentMaterial != Material.AIR) {
                     try {
-                        ItemStack refundItem = new ItemStack(newMaterial, 1);
-
+                        ItemStack refundItem = new ItemStack(currentMaterial, 1);
                         if (player.getInventory().firstEmpty() != -1) {
                             player.getInventory().addItem(refundItem);
                         } else {
                             player.getWorld().dropItem(player.getLocation(), refundItem);
                         }
                         refundedItems++;
-                    } catch (Exception e) {
+                    } catch (Exception ignored) {
                     }
                 }
 
                 try {
-                    currentBlock.setBlockData(oldBlockData, false);
+                    oldState.update(true, false);
                     blocksRestored++;
                 } catch (Exception e) {
                     System.err.println("Failed to restore block at " + location + ": " + e.getMessage());
@@ -107,7 +98,7 @@ public class UndoTask extends BukkitRunnable {
                             .replaceText(config -> config.matchLiteral("%blocks%").replacement(String.valueOf(blocksRestored))));
                 }
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
 
         this.cancel();
