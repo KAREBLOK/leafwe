@@ -2,7 +2,6 @@ package com.leaf.leafwe.database.impl;
 
 import com.leaf.leafwe.LeafWE;
 import com.leaf.leafwe.database.DatabaseManager;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.sql.*;
@@ -10,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class SQLiteDatabaseManager implements DatabaseManager {
 
@@ -18,7 +17,9 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     private Connection connection;
     private final String databaseFile;
     private boolean initialized = false;
-    private final ConcurrentLinkedQueue<String> queryLog = new ConcurrentLinkedQueue<>();
+
+    // YENİ: Veritabanı işlemleri için kilit mekanizması
+    private final ReentrantLock lock = new ReentrantLock();
 
     private static final String CREATE_DAILY_USAGE_TABLE = """
         CREATE TABLE IF NOT EXISTS daily_usage (
@@ -63,12 +64,12 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<Boolean> initialize() {
         return CompletableFuture.supplyAsync(() -> {
+            lock.lock();
             try {
-                // Force load the driver class
                 Class.forName("org.sqlite.JDBC");
 
                 File dbFile = new File(plugin.getDataFolder(), databaseFile);
-                dbFile.getParentFile().mkdirs();
+                boolean ignored = dbFile.getParentFile().mkdirs();
 
                 String url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
                 connection = DriverManager.getConnection(url);
@@ -83,8 +84,10 @@ public class SQLiteDatabaseManager implements DatabaseManager {
 
             } catch (Exception e) {
                 plugin.getLogger().severe("Failed to initialize SQLite database: " + e.getMessage());
-                e.printStackTrace();
+                plugin.getLogger().severe(e.getMessage());
                 return false;
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -101,6 +104,7 @@ public class SQLiteDatabaseManager implements DatabaseManager {
             stmt.execute("PRAGMA cache_size = " + cacheSize);
             stmt.execute("PRAGMA temp_store = " + tempStore);
             stmt.execute("PRAGMA foreign_keys = ON");
+            stmt.execute("PRAGMA busy_timeout = 3000");
 
             plugin.getLogger().info("SQLite optimizations applied: " +
                     "journal_mode=" + journalMode + ", synchronous=" + synchronous +
@@ -126,6 +130,7 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<Void> shutdown() {
         return CompletableFuture.runAsync(() -> {
+            lock.lock();
             try {
                 if (connection != null && !connection.isClosed()) {
                     connection.close();
@@ -134,6 +139,8 @@ public class SQLiteDatabaseManager implements DatabaseManager {
                 initialized = false;
             } catch (SQLException e) {
                 plugin.getLogger().warning("Error closing SQLite database: " + e.getMessage());
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -141,6 +148,7 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<Boolean> testConnection() {
         return CompletableFuture.supplyAsync(() -> {
+            lock.lock();
             try {
                 if (connection == null || connection.isClosed()) {
                     return false;
@@ -153,6 +161,8 @@ public class SQLiteDatabaseManager implements DatabaseManager {
             } catch (SQLException e) {
                 plugin.getLogger().warning("Database connection test failed: " + e.getMessage());
                 return false;
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -160,31 +170,36 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<DailyUsageData> getDailyUsage(UUID playerId, String date) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = "SELECT * FROM daily_usage WHERE player_id = ? AND date = ?";
+            lock.lock();
+            try {
+                String sql = "SELECT * FROM daily_usage WHERE player_id = ? AND date = ?";
 
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, playerId.toString());
-                stmt.setString(2, date);
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    stmt.setString(1, playerId.toString());
+                    stmt.setString(2, date);
 
-                logQuery(sql, playerId.toString(), date);
+                    logQuery(sql, playerId.toString(), date);
 
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        return new DailyUsageData(
-                                UUID.fromString(rs.getString("player_id")),
-                                rs.getString("date"),
-                                rs.getInt("blocks_used"),
-                                rs.getInt("operations_used"),
-                                rs.getString("player_group"),
-                                rs.getLong("last_updated")
-                        );
-                    } else {
-                        return new DailyUsageData(playerId, date, 0, 0, "default", System.currentTimeMillis());
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) {
+                            return new DailyUsageData(
+                                    UUID.fromString(rs.getString("player_id")),
+                                    rs.getString("date"),
+                                    rs.getInt("blocks_used"),
+                                    rs.getInt("operations_used"),
+                                    rs.getString("player_group"),
+                                    rs.getLong("last_updated")
+                            );
+                        } else {
+                            return new DailyUsageData(playerId, date, 0, 0, "default", System.currentTimeMillis());
+                        }
                     }
                 }
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error getting daily usage: " + e.getMessage());
                 return new DailyUsageData(playerId, date, 0, 0, "default", System.currentTimeMillis());
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -192,28 +207,32 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<Boolean> updateDailyUsage(UUID playerId, String date, int blocksUsed, int operationsUsed, String group) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = """
-                INSERT OR REPLACE INTO daily_usage 
-                (player_id, date, blocks_used, operations_used, player_group, last_updated) 
-                VALUES (?, ?, ?, ?, ?, ?)
-                """;
+            lock.lock();
+            try {
+                String sql = """
+                    INSERT OR REPLACE INTO daily_usage
+                    (player_id, date, blocks_used, operations_used, player_group, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """;
 
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, playerId.toString());
-                stmt.setString(2, date);
-                stmt.setInt(3, blocksUsed);
-                stmt.setInt(4, operationsUsed);
-                stmt.setString(5, group);
-                stmt.setLong(6, System.currentTimeMillis());
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    stmt.setString(1, playerId.toString());
+                    stmt.setString(2, date);
+                    stmt.setInt(3, blocksUsed);
+                    stmt.setInt(4, operationsUsed);
+                    stmt.setString(5, group);
+                    stmt.setLong(6, System.currentTimeMillis());
 
-                logQuery(sql, playerId.toString(), date, String.valueOf(blocksUsed), String.valueOf(operationsUsed), group);
+                    logQuery(sql, playerId.toString(), date, String.valueOf(blocksUsed), String.valueOf(operationsUsed), group);
 
-                int affected = stmt.executeUpdate();
-                return affected > 0;
-
+                    int affected = stmt.executeUpdate();
+                    return affected > 0;
+                }
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error updating daily usage: " + e.getMessage());
                 return false;
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -221,20 +240,24 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<Boolean> resetDailyUsage(UUID playerId, String date) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = "DELETE FROM daily_usage WHERE player_id = ? AND date = ?";
+            lock.lock();
+            try {
+                String sql = "DELETE FROM daily_usage WHERE player_id = ? AND date = ?";
 
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, playerId.toString());
-                stmt.setString(2, date);
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    stmt.setString(1, playerId.toString());
+                    stmt.setString(2, date);
 
-                logQuery(sql, playerId.toString(), date);
+                    logQuery(sql, playerId.toString(), date);
 
-                int affected = stmt.executeUpdate();
-                return affected > 0;
-
+                    int affected = stmt.executeUpdate();
+                    return affected > 0;
+                }
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error resetting daily usage: " + e.getMessage());
                 return false;
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -242,14 +265,15 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<Boolean> cleanupOldData(int daysToKeep) {
         return CompletableFuture.supplyAsync(() -> {
-            long cutoffTime = System.currentTimeMillis() - (daysToKeep * 24L * 60L * 60L * 1000L);
-
-            String sql1 = "DELETE FROM daily_usage WHERE last_updated < ?";
-            String sql2 = "DELETE FROM sessions WHERE start_time < ?";
-
+            lock.lock();
             try {
-                int deletedUsage = 0;
-                int deletedSessions = 0;
+                long cutoffTime = System.currentTimeMillis() - (daysToKeep * 24L * 60L * 60L * 1000L);
+
+                String sql1 = "DELETE FROM daily_usage WHERE last_updated < ?";
+                String sql2 = "DELETE FROM sessions WHERE start_time < ?";
+
+                int deletedUsage;
+                int deletedSessions;
 
                 try (PreparedStatement stmt = connection.prepareStatement(sql1)) {
                     stmt.setLong(1, cutoffTime);
@@ -268,6 +292,8 @@ public class SQLiteDatabaseManager implements DatabaseManager {
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error during cleanup: " + e.getMessage());
                 return false;
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -275,31 +301,36 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<PlayerStats> getPlayerStats(UUID playerId) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = "SELECT * FROM player_stats WHERE player_id = ?";
+            lock.lock();
+            try {
+                String sql = "SELECT * FROM player_stats WHERE player_id = ?";
 
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, playerId.toString());
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    stmt.setString(1, playerId.toString());
 
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        return new PlayerStats(
-                                UUID.fromString(rs.getString("player_id")),
-                                rs.getLong("total_blocks_placed"),
-                                rs.getLong("total_operations"),
-                                rs.getLong("total_playtime"),
-                                rs.getString("favorite_block"),
-                                rs.getLong("first_seen"),
-                                rs.getLong("last_seen")
-                        );
-                    } else {
-                        long now = System.currentTimeMillis();
-                        return new PlayerStats(playerId, 0, 0, 0, "STONE", now, now);
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) {
+                            return new PlayerStats(
+                                    UUID.fromString(rs.getString("player_id")),
+                                    rs.getLong("total_blocks_placed"),
+                                    rs.getLong("total_operations"),
+                                    rs.getLong("total_playtime"),
+                                    rs.getString("favorite_block"),
+                                    rs.getLong("first_seen"),
+                                    rs.getLong("last_seen")
+                            );
+                        } else {
+                            long now = System.currentTimeMillis();
+                            return new PlayerStats(playerId, 0, 0, 0, "STONE", now, now);
+                        }
                     }
                 }
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error getting player stats: " + e.getMessage());
                 long now = System.currentTimeMillis();
                 return new PlayerStats(playerId, 0, 0, 0, "STONE", now, now);
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -307,19 +338,23 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<Boolean> updatePlayerStats(UUID playerId, String statType, long value) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = "INSERT OR REPLACE INTO player_stats (player_id, " + statType + ", last_seen) VALUES (?, ?, ?)";
+            lock.lock();
+            try {
+                String sql = "INSERT OR REPLACE INTO player_stats (player_id, " + statType + ", last_seen) VALUES (?, ?, ?)";
 
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, playerId.toString());
-                stmt.setLong(2, value);
-                stmt.setLong(3, System.currentTimeMillis());
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    stmt.setString(1, playerId.toString());
+                    stmt.setLong(2, value);
+                    stmt.setLong(3, System.currentTimeMillis());
 
-                int affected = stmt.executeUpdate();
-                return affected > 0;
-
+                    int affected = stmt.executeUpdate();
+                    return affected > 0;
+                }
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error updating player stats: " + e.getMessage());
                 return false;
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -327,29 +362,33 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<Boolean> incrementPlayerStat(UUID playerId, String statType, long increment) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = """
-                INSERT INTO player_stats (player_id, %s, last_seen, first_seen) 
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(player_id) DO UPDATE SET 
-                %s = %s + ?, 
-                last_seen = ?
-                """.formatted(statType, statType, statType);
+            lock.lock();
+            try {
+                String sql = """
+                    INSERT INTO player_stats (player_id, %s, last_seen, first_seen)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(player_id) DO UPDATE SET
+                    %s = %s + ?,
+                    last_seen = ?
+                    """.formatted(statType, statType, statType);
 
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                long now = System.currentTimeMillis();
-                stmt.setString(1, playerId.toString());
-                stmt.setLong(2, increment);
-                stmt.setLong(3, now);
-                stmt.setLong(4, now);
-                stmt.setLong(5, increment);
-                stmt.setLong(6, now);
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    long now = System.currentTimeMillis();
+                    stmt.setString(1, playerId.toString());
+                    stmt.setLong(2, increment);
+                    stmt.setLong(3, now);
+                    stmt.setLong(4, now);
+                    stmt.setLong(5, increment);
+                    stmt.setLong(6, now);
 
-                int affected = stmt.executeUpdate();
-                return affected > 0;
-
+                    int affected = stmt.executeUpdate();
+                    return affected > 0;
+                }
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error incrementing player stat: " + e.getMessage());
                 return false;
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -357,22 +396,26 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<Boolean> recordSession(UUID playerId, String sessionType, long duration) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = "INSERT INTO sessions (player_id, session_type, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)";
+            lock.lock();
+            try {
+                String sql = "INSERT INTO sessions (player_id, session_type, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)";
 
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                long now = System.currentTimeMillis();
-                stmt.setString(1, playerId.toString());
-                stmt.setString(2, sessionType);
-                stmt.setLong(3, now - duration);
-                stmt.setLong(4, now);
-                stmt.setLong(5, duration);
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    long now = System.currentTimeMillis();
+                    stmt.setString(1, playerId.toString());
+                    stmt.setString(2, sessionType);
+                    stmt.setLong(3, now - duration);
+                    stmt.setLong(4, now);
+                    stmt.setLong(5, duration);
 
-                int affected = stmt.executeUpdate();
-                return affected > 0;
-
+                    int affected = stmt.executeUpdate();
+                    return affected > 0;
+                }
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error recording session: " + e.getMessage());
                 return false;
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -380,26 +423,31 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<SessionData> getLastSession(UUID playerId) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = "SELECT * FROM sessions WHERE player_id = ? ORDER BY start_time DESC LIMIT 1";
+            lock.lock();
+            try {
+                String sql = "SELECT * FROM sessions WHERE player_id = ? ORDER BY start_time DESC LIMIT 1";
 
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, playerId.toString());
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    stmt.setString(1, playerId.toString());
 
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        return new SessionData(
-                                UUID.fromString(rs.getString("player_id")),
-                                rs.getString("session_type"),
-                                rs.getLong("start_time"),
-                                rs.getLong("end_time"),
-                                rs.getLong("duration")
-                        );
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) {
+                            return new SessionData(
+                                    UUID.fromString(rs.getString("player_id")),
+                                    rs.getString("session_type"),
+                                    rs.getLong("start_time"),
+                                    rs.getLong("end_time"),
+                                    rs.getLong("duration")
+                            );
+                        }
+                        return null;
                     }
-                    return null;
                 }
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error getting last session: " + e.getMessage());
                 return null;
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -407,46 +455,51 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<Boolean> batchUpdateDailyUsage(List<DailyUsageData> usageList) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = """
-                INSERT OR REPLACE INTO daily_usage 
-                (player_id, date, blocks_used, operations_used, player_group, last_updated) 
-                VALUES (?, ?, ?, ?, ?, ?)
-                """;
-
+            lock.lock();
             try {
-                connection.setAutoCommit(false);
+                String sql = """
+                    INSERT OR REPLACE INTO daily_usage
+                    (player_id, date, blocks_used, operations_used, player_group, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """;
 
-                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                    for (DailyUsageData usage : usageList) {
-                        stmt.setString(1, usage.playerId.toString());
-                        stmt.setString(2, usage.date);
-                        stmt.setInt(3, usage.blocksUsed);
-                        stmt.setInt(4, usage.operationsUsed);
-                        stmt.setString(5, usage.playerGroup);
-                        stmt.setLong(6, usage.lastUpdated);
-                        stmt.addBatch();
+                try {
+                    connection.setAutoCommit(false);
+
+                    try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                        for (DailyUsageData usage : usageList) {
+                            stmt.setString(1, usage.playerId.toString());
+                            stmt.setString(2, usage.date);
+                            stmt.setInt(3, usage.blocksUsed);
+                            stmt.setInt(4, usage.operationsUsed);
+                            stmt.setString(5, usage.playerGroup);
+                            stmt.setLong(6, usage.lastUpdated);
+                            stmt.addBatch();
+                        }
+
+                        int[] results = stmt.executeBatch();
+                        connection.commit();
+
+                        plugin.getLogger().info("Batch update completed: " + results.length + " records processed");
+                        return true;
                     }
-
-                    int[] results = stmt.executeBatch();
-                    connection.commit();
-
-                    plugin.getLogger().info("Batch update completed: " + results.length + " records processed");
-                    return true;
-                }
-            } catch (SQLException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException rollbackEx) {
-                    plugin.getLogger().severe("Error during rollback: " + rollbackEx.getMessage());
-                }
-                plugin.getLogger().severe("Error in batch update: " + e.getMessage());
-                return false;
-            } finally {
-                try {
-                    connection.setAutoCommit(true);
                 } catch (SQLException e) {
-                    plugin.getLogger().severe("Error restoring auto-commit: " + e.getMessage());
+                    try {
+                        connection.rollback();
+                    } catch (SQLException rollbackEx) {
+                        plugin.getLogger().severe("Error during rollback: " + rollbackEx.getMessage());
+                    }
+                    plugin.getLogger().severe("Error in batch update: " + e.getMessage());
+                    return false;
+                } finally {
+                    try {
+                        connection.setAutoCommit(true);
+                    } catch (SQLException e) {
+                        plugin.getLogger().severe("Error restoring auto-commit: " + e.getMessage());
+                    }
                 }
+            } finally {
+                lock.unlock();
             }
         });
     }
@@ -454,29 +507,34 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<List<DailyUsageData>> getAllDailyUsage(String date) {
         return CompletableFuture.supplyAsync(() -> {
-            String sql = "SELECT * FROM daily_usage WHERE date = ?";
-            List<DailyUsageData> results = new ArrayList<>();
+            lock.lock();
+            try {
+                String sql = "SELECT * FROM daily_usage WHERE date = ?";
+                List<DailyUsageData> results = new ArrayList<>();
 
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, date);
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    stmt.setString(1, date);
 
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        results.add(new DailyUsageData(
-                                UUID.fromString(rs.getString("player_id")),
-                                rs.getString("date"),
-                                rs.getInt("blocks_used"),
-                                rs.getInt("operations_used"),
-                                rs.getString("player_group"),
-                                rs.getLong("last_updated")
-                        ));
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            results.add(new DailyUsageData(
+                                    UUID.fromString(rs.getString("player_id")),
+                                    rs.getString("date"),
+                                    rs.getInt("blocks_used"),
+                                    rs.getInt("operations_used"),
+                                    rs.getString("player_group"),
+                                    rs.getLong("last_updated")
+                            ));
+                        }
                     }
                 }
+                return results;
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error getting all daily usage: " + e.getMessage());
+                return new ArrayList<>();
+            } finally {
+                lock.unlock();
             }
-
-            return results;
         });
     }
 
@@ -493,6 +551,7 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     @Override
     public CompletableFuture<DatabaseStats> getDatabaseStats() {
         return CompletableFuture.supplyAsync(() -> {
+            lock.lock();
             try {
                 long dailyUsageCount = getTableRowCount("daily_usage");
                 long playerStatsCount = getTableRowCount("player_stats");
@@ -511,6 +570,8 @@ public class SQLiteDatabaseManager implements DatabaseManager {
             } catch (Exception e) {
                 plugin.getLogger().severe("Error getting database stats: " + e.getMessage());
                 return new DatabaseStats("SQLite", 0, 0, 0, 0, 0.0, "Error");
+            } finally {
+                lock.unlock();
             }
         });
     }
