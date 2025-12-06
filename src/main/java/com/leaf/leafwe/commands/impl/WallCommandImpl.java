@@ -172,7 +172,8 @@ public class WallCommandImpl extends BaseCommand {
                 BlockPlacerTask task = new BlockPlacerTask(
                         plugin, player, locationsToFill, finalBlockType,
                         ManagerRegistry.config(), ManagerRegistry.visualizer(),
-                        ManagerRegistry.task(), ManagerRegistry.blockstate()
+                        ManagerRegistry.task(), ManagerRegistry.blockstate(),
+                        ManagerRegistry.protection()
                 );
                 task.runTaskTimer(plugin, 2L, ManagerRegistry.config().getSpeed());
                 ManagerRegistry.task().startTask(player, task);

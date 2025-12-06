@@ -1,10 +1,11 @@
 package com.leaf.leafwe.tasks;
 
-import com.leaf.leafwe.gui.*;
-import com.leaf.leafwe.managers.*;
 import com.leaf.leafwe.LeafWE;
-
+import com.leaf.leafwe.gui.SelectionVisualizer;
+import com.leaf.leafwe.managers.*;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -18,6 +19,7 @@ import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.EulerAngle;
+
 import java.util.List;
 
 public class ReplaceTask extends BukkitRunnable {
@@ -29,15 +31,18 @@ public class ReplaceTask extends BukkitRunnable {
     private final SelectionVisualizer selectionVisualizer;
     private final TaskManager taskManager;
     private final BlockstateManager blockstateManager;
+    private final ProtectionManager protectionManager; // YENİ
     private final int totalBlocks;
     private int blocksReplaced = 0;
+    private int blocksSkipped = 0; // YENİ
     private ArmorStand worker = null;
     private boolean isRunning = true;
     private boolean isCompleted = false;
 
     public ReplaceTask(LeafWE plugin, Player player, List<Location> locationsToChange, Material toMaterial,
                        ConfigManager configManager, SelectionVisualizer visualizer,
-                       TaskManager taskManager, BlockstateManager blockstateManager) {
+                       TaskManager taskManager, BlockstateManager blockstateManager,
+                       ProtectionManager protectionManager) {
         this.plugin = plugin;
         this.player = player;
         this.locationsToChange = locationsToChange;
@@ -46,6 +51,7 @@ public class ReplaceTask extends BukkitRunnable {
         this.selectionVisualizer = visualizer;
         this.taskManager = taskManager;
         this.blockstateManager = blockstateManager;
+        this.protectionManager = protectionManager;
         this.totalBlocks = locationsToChange.size();
     }
 
@@ -59,6 +65,12 @@ public class ReplaceTask extends BukkitRunnable {
         }
 
         Location currentLocation = locationsToChange.remove(0);
+
+        if (protectionManager != null && !protectionManager.canBuild(player, currentLocation)) {
+            blocksSkipped++;
+            return;
+        }
+
         Block currentBlock = currentLocation.getBlock();
 
         if (worker == null && configManager.isWorkerAnimationEnabled()) {
@@ -87,10 +99,11 @@ public class ReplaceTask extends BukkitRunnable {
         player.getInventory().removeItem(new ItemStack(toMaterial, 1));
         blocksReplaced++;
 
-        net.kyori.adventure.text.Component operationComp = configManager.getProgressOperationReplacing()
-                .append(net.kyori.adventure.text.Component.text(" "))
-                .append(net.kyori.adventure.text.Component.translatable(toMaterial.translationKey()));
-        ProgressBarManager.showProgress(player, blocksReplaced, totalBlocks, operationComp);
+        Component operationComp = configManager.getProgressOperationReplacing()
+                .append(Component.text(" "))
+                .append(Component.translatable(toMaterial.translationKey()));
+
+        ProgressBarManager.showProgress(player, blocksReplaced + blocksSkipped, totalBlocks, operationComp);
     }
 
     private void finishTask() {
@@ -106,15 +119,16 @@ public class ReplaceTask extends BukkitRunnable {
             player.sendMessage(configManager.getMessage("process-incomplete")
                     .replaceText(config -> config.matchLiteral("%remaining%").replacement(String.valueOf(locationsToChange.size()))));
 
-            String operationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(configManager.getProgressOperationReplacing());
-            String errorText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(configManager.getProgressErrorInventory());
+            String operationText = PlainTextComponentSerializer.plainText().serialize(configManager.getProgressOperationReplacing());
+            String errorText = PlainTextComponentSerializer.plainText().serialize(configManager.getProgressErrorInventory());
             ProgressBarManager.showError(player, operationText, errorText);
         } else {
-            String completionText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(configManager.getProgressOperationBlockReplacement());
+            String completionText = PlainTextComponentSerializer.plainText().serialize(configManager.getProgressOperationBlockReplacement());
             ProgressBarManager.showCompletion(player, blocksReplaced, completionText);
+
+            if (blocksSkipped > 0) {
+                player.sendMessage("§e" + blocksSkipped + " blok korumalı alanda olduğu için değiştirilemedi.");
+            }
         }
 
         player.sendMessage(configManager.getMessage("process-complete")
@@ -136,8 +150,7 @@ public class ReplaceTask extends BukkitRunnable {
         cleanupWorker();
 
         if (player.isOnline() && !isCompleted) {
-            String cancellationText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(configManager.getProgressOperationBlockReplacement());
+            String cancellationText = PlainTextComponentSerializer.plainText().serialize(configManager.getProgressOperationBlockReplacement());
             ProgressBarManager.showCancellation(player, cancellationText);
         }
 
@@ -203,7 +216,7 @@ public class ReplaceTask extends BukkitRunnable {
                         break;
                 }
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
     }
 }
