@@ -18,7 +18,6 @@ public class SQLiteDatabaseManager implements DatabaseManager {
     private final String databaseFile;
     private boolean initialized = false;
 
-    // YENİ: Veritabanı işlemleri için kilit mekanizması
     private final ReentrantLock lock = new ReentrantLock();
 
     private static final String CREATE_DAILY_USAGE_TABLE = """

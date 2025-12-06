@@ -31,16 +31,15 @@ public class BlockPlacerTask extends BukkitRunnable {
     private final SelectionVisualizer selectionVisualizer;
     private final TaskManager taskManager;
     private final BlockstateManager blockstateManager;
-    private final ProtectionManager protectionManager; // YENİ
+    private final ProtectionManager protectionManager;
     private final int totalBlocks;
     private int blocksPlaced = 0;
-    private int blocksSkipped = 0; // YENİ: Koruma nedeniyle atlanan bloklar
+    private int blocksSkipped = 0;
     private ArmorStand worker = null;
     private boolean isRunning = true;
     private boolean isCompleted = false;
     private boolean limitsRecorded = false;
 
-    // Constructor güncellendi: ProtectionManager eklendi
     public BlockPlacerTask(LeafWE plugin, Player player, List<Location> locations, Material material,
                            ConfigManager configManager, SelectionVisualizer visualizer,
                            TaskManager taskManager, BlockstateManager blockstateManager,
@@ -61,21 +60,15 @@ public class BlockPlacerTask extends BukkitRunnable {
     public void run() {
         if (!isRunning) return;
 
-        if (locationsToFill.isEmpty() || !player.getInventory().contains(material)) {
+        if (locationsToFill.isEmpty() || !hasSafeMaterial(player, material)) {
             finishTask();
             return;
         }
 
         Location currentLocation = locationsToFill.remove(0);
 
-        // YENİ: Blok bazlı koruma kontrolü (Donut fix)
         if (protectionManager != null && !protectionManager.canBuild(player, currentLocation)) {
             blocksSkipped++;
-            // Bu bloğu atla ve bir sonrakine geç (hız koruması için return demiyoruz, sadece işlemi yapmıyoruz)
-            // Ancak task yapısı gereği run() metodu tick başına belirli sayıda çalışmalıydı,
-            // burada tek seferlik çalışıyor gibi görünüyor (speed=1 ise).
-            // LeafWE orijinal yapısında loop yok, her tick 1 blok.
-            // Bu yüzden 'return' demeden, sadece bu ticklik işlemi pas geçiyoruz.
             return;
         }
 
@@ -101,16 +94,40 @@ public class BlockPlacerTask extends BukkitRunnable {
             if (configManager.getPlacementParticle() != null) {
                 player.getWorld().spawnParticle(configManager.getPlacementParticle(), currentLocation.clone().add(0.5, 0.5, 0.5), 1, 0, 0, 0, 0);
             }
-            player.getInventory().removeItem(new ItemStack(material, 1));
+
+            removeSafeMaterial(player, material);
             blocksPlaced++;
         }
 
         Component operationComp = configManager.getProgressOperationPlacing()
                 .append(Component.text(" "))
                 .append(Component.translatable(material.translationKey()));
-
-        // İlerleme çubuğunda atlanan blokları da hesaba katabiliriz veya gizleyebiliriz.
         ProgressBarManager.showProgress(player, blocksPlaced + blocksSkipped, totalBlocks, operationComp);
+    }
+
+    private void removeSafeMaterial(Player player, Material material) {
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() == material) {
+                if (item.hasItemMeta()) continue;
+
+                int amount = item.getAmount();
+                if (amount > 1) {
+                    item.setAmount(amount - 1);
+                } else {
+                    player.getInventory().removeItem(item);
+                }
+                return;
+            }
+        }
+    }
+
+    private boolean hasSafeMaterial(Player player, Material material) {
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() == material) {
+                if (!item.hasItemMeta()) return true;
+            }
+        }
+        return false;
     }
 
     private void finishTask() {
@@ -141,7 +158,6 @@ public class BlockPlacerTask extends BukkitRunnable {
             String completionText = PlainTextComponentSerializer.plainText().serialize(configManager.getProgressOperationBlockPlacement());
             ProgressBarManager.showCompletion(player, blocksPlaced, completionText);
 
-            // Eğer koruma yüzünden atlanan blok varsa bilgi ver
             if (blocksSkipped > 0) {
                 player.sendMessage("§e" + blocksSkipped + " blok korumalı alanda olduğu için yerleştirilemedi.");
             }
@@ -152,10 +168,6 @@ public class BlockPlacerTask extends BukkitRunnable {
 
         this.cancel();
     }
-
-    // ... (Diğer metodlar spawnWorker, cleanupWorker aynı kalacak) ...
-    // KODUN GERİ KALANI DEĞİŞMEDİ, SADECE CONSTRUCTOR VE RUN GÜNCELLENDİ.
-    // TAM KOD İÇİN AŞAĞIYA BAKINIZ.
 
     private void cleanupWorker() {
         if (worker != null && !worker.isDead()) {
@@ -236,7 +248,6 @@ public class BlockPlacerTask extends BukkitRunnable {
                         break;
                 }
             }
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) { }
     }
 }

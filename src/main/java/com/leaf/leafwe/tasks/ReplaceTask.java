@@ -1,6 +1,5 @@
 package com.leaf.leafwe.tasks;
 
-import com.leaf.leafwe.LeafWE;
 import com.leaf.leafwe.gui.SelectionVisualizer;
 import com.leaf.leafwe.managers.*;
 import net.kyori.adventure.text.Component;
@@ -23,7 +22,6 @@ import org.bukkit.util.EulerAngle;
 import java.util.List;
 
 public class ReplaceTask extends BukkitRunnable {
-    private final LeafWE plugin;
     private final Player player;
     private final List<Location> locationsToChange;
     private final Material toMaterial;
@@ -31,19 +29,18 @@ public class ReplaceTask extends BukkitRunnable {
     private final SelectionVisualizer selectionVisualizer;
     private final TaskManager taskManager;
     private final BlockstateManager blockstateManager;
-    private final ProtectionManager protectionManager; // YENİ
+    private final ProtectionManager protectionManager;
     private final int totalBlocks;
     private int blocksReplaced = 0;
-    private int blocksSkipped = 0; // YENİ
+    private int blocksSkipped = 0;
     private ArmorStand worker = null;
     private boolean isRunning = true;
     private boolean isCompleted = false;
 
-    public ReplaceTask(LeafWE plugin, Player player, List<Location> locationsToChange, Material toMaterial,
+    public ReplaceTask(Player player, List<Location> locationsToChange, Material toMaterial,
                        ConfigManager configManager, SelectionVisualizer visualizer,
                        TaskManager taskManager, BlockstateManager blockstateManager,
                        ProtectionManager protectionManager) {
-        this.plugin = plugin;
         this.player = player;
         this.locationsToChange = locationsToChange;
         this.toMaterial = toMaterial;
@@ -59,7 +56,8 @@ public class ReplaceTask extends BukkitRunnable {
     public void run() {
         if (!isRunning) return;
 
-        if (locationsToChange.isEmpty() || !player.getInventory().contains(toMaterial)) {
+        // Kontrol: Envanterde güvenli materyal var mı?
+        if (locationsToChange.isEmpty() || !hasSafeMaterial(player, toMaterial)) {
             finishTask();
             return;
         }
@@ -96,14 +94,41 @@ public class ReplaceTask extends BukkitRunnable {
                     currentLocation.clone().add(0.5, 0.5, 0.5), 1, 0, 0, 0, 0);
         }
 
-        player.getInventory().removeItem(new ItemStack(toMaterial, 1));
+        // YENİ: Güvenli silme
+        removeSafeMaterial(player, toMaterial);
         blocksReplaced++;
 
         Component operationComp = configManager.getProgressOperationReplacing()
                 .append(Component.text(" "))
                 .append(Component.translatable(toMaterial.translationKey()));
-
         ProgressBarManager.showProgress(player, blocksReplaced + blocksSkipped, totalBlocks, operationComp);
+    }
+
+    // YENİ METOD
+    private void removeSafeMaterial(Player player, Material material) {
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() == material) {
+                if (item.hasItemMeta()) continue;
+
+                int amount = item.getAmount();
+                if (amount > 1) {
+                    item.setAmount(amount - 1);
+                } else {
+                    player.getInventory().removeItem(item);
+                }
+                return;
+            }
+        }
+    }
+
+    // YENİ METOD
+    private boolean hasSafeMaterial(Player player, Material material) {
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() == material) {
+                if (!item.hasItemMeta()) return true;
+            }
+        }
+        return false;
     }
 
     private void finishTask() {

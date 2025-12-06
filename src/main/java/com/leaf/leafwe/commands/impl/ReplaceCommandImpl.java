@@ -3,8 +3,6 @@ package com.leaf.leafwe.commands.impl;
 import com.leaf.leafwe.LeafWE;
 import com.leaf.leafwe.commands.BaseCommand;
 import com.leaf.leafwe.managers.*;
-import com.leaf.leafwe.gui.GuiManager;
-import com.leaf.leafwe.gui.SelectionVisualizer;
 import com.leaf.leafwe.tasks.ReplaceTask;
 import com.leaf.leafwe.registry.ManagerRegistry;
 import net.kyori.adventure.text.Component;
@@ -12,7 +10,6 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.data.BlockData;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -81,7 +78,7 @@ public class ReplaceCommandImpl extends BaseCommand {
             fromBlock = Material.valueOf(fromMaterialName);
 
             if (!fromBlock.isBlock() && !fromBlock.isAir()) {
-                 player.sendMessage(ManagerRegistry.config().getMessage("invalid-block")
+                player.sendMessage(ManagerRegistry.config().getMessage("invalid-block")
                         .replaceText(config -> config.matchLiteral("%block%").replacement(args[0])));
                 return true;
             }
@@ -92,9 +89,9 @@ public class ReplaceCommandImpl extends BaseCommand {
         }
 
         if (args.length == 1) {
-             ManagerRegistry.gui().setLastReplacedFrom(player, fromBlock);
-             ManagerRegistry.gui().openBlockPickerGui(player, "replace_to", null);
-             return true;
+            ManagerRegistry.gui().setLastReplacedFrom(player, fromBlock);
+            ManagerRegistry.gui().openBlockPickerGui(player, "replace_to", null);
+            return true;
         }
 
         try {
@@ -124,7 +121,7 @@ public class ReplaceCommandImpl extends BaseCommand {
         }
 
         List<Location> locationsToFill = new ArrayList<>();
-        Map<Location, BlockData> undoData = new HashMap<>();
+        Map<Location, org.bukkit.block.BlockState> undoData = new HashMap<>();
 
         try {
             World world = pos1.getWorld();
@@ -142,7 +139,7 @@ public class ReplaceCommandImpl extends BaseCommand {
                         Block block = loc.getBlock();
                         if (block.getType() == fromBlock) {
                             locationsToFill.add(loc);
-                            undoData.put(loc, block.getBlockData());
+                            undoData.put(loc, block.getState());
                         }
                     }
                 }
@@ -165,12 +162,12 @@ public class ReplaceCommandImpl extends BaseCommand {
             if (!limitResult.canPerform) {
                 var usageInfo = ManagerRegistry.dailyLimit().getUsageInfo(player);
                 if (limitResult.limitType == DailyLimitManager.LimitType.BLOCKS) {
-                     player.sendMessage(ManagerRegistry.config().getDailyLimitBlocksExceeded()
+                    player.sendMessage(ManagerRegistry.config().getDailyLimitBlocksExceeded()
                             .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedBlocks)))
                             .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxBlocks)))
                             .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
                 } else {
-                     player.sendMessage(ManagerRegistry.config().getDailyLimitOperationsExceeded()
+                    player.sendMessage(ManagerRegistry.config().getDailyLimitOperationsExceeded()
                             .replaceText(config -> config.matchLiteral("%used%").replacement(String.valueOf(usageInfo.usedOperations)))
                             .replaceText(config -> config.matchLiteral("%max%").replacement(String.valueOf(usageInfo.maxOperations)))
                             .replaceText(config -> config.matchLiteral("%group%").replacement(usageInfo.group)));
@@ -193,7 +190,7 @@ public class ReplaceCommandImpl extends BaseCommand {
                 player.sendMessage(ManagerRegistry.config().getMessage("process-starting"));
 
                 ReplaceTask task = new ReplaceTask(
-                        plugin, player, locationsToFill, finalToBlock,
+                        player, locationsToFill, finalToBlock,
                         ManagerRegistry.config(), ManagerRegistry.visualizer(),
                         ManagerRegistry.task(), ManagerRegistry.blockstate(),
                         ManagerRegistry.protection()
@@ -244,7 +241,7 @@ public class ReplaceCommandImpl extends BaseCommand {
                 new Location(world, maxX, maxY, maxZ),
                 new Location(world, minX, maxY, minZ),
                 new Location(world, maxX, minY, maxZ),
-                new Location(world, (minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2)
+                new Location(world, (double) (minX + maxX) / 2, (double) (minY + maxY) / 2, (double) (minZ + maxZ) / 2)
         };
 
         for (Location checkPoint : checkPoints) {

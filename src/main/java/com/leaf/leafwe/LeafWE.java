@@ -213,7 +213,6 @@ public final class LeafWE extends JavaPlugin {
                             ManagerRegistry.gui()
                     ), this);
 
-            // Memory Leak Prevention için WorldListener
             getServer().getPluginManager().registerEvents(new com.leaf.leafwe.listeners.WorldListener(), this);
 
             getLogger().info("✅ Event listeners registered successfully");
@@ -278,7 +277,6 @@ public final class LeafWE extends JavaPlugin {
             double memoryPercent = (double) usedMemory / maxMemory * 100;
 
             if (memoryPercent > 80) {
-                // String.format hatasını gidermek için String birleştirmesi kullanıyoruz
                 getLogger().warning("⚠️ High memory usage detected: " + Math.round(memoryPercent) + "%");
             }
 
