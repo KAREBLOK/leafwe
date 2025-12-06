@@ -10,6 +10,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +22,11 @@ public class UndoTask extends BukkitRunnable {
     private int refundedItems = 0;
     private int blocksRestored = 0;
     private boolean isRunning = true;
+
+    private final Map<Material, Integer> dropBuffer = new HashMap<>();
+    private Location lastDropLocation = null;
+
+    private static final double MAX_DISTANCE_SQUARED = 50 * 50;
 
     public UndoTask(Player player, Map<Location, BlockState> changeMap, ConfigManager configManager) {
         this.player = player;
@@ -42,6 +48,7 @@ public class UndoTask extends BukkitRunnable {
 
         int blocksToRestore = 0;
         int maxBlocksPerTick = 2000;
+        Location playerLoc = player.getLocation();
 
         while (blocksToRestore < maxBlocksPerTick && !changes.isEmpty()) {
             try {
@@ -49,43 +56,74 @@ public class UndoTask extends BukkitRunnable {
                 Location location = entry.getKey();
                 BlockState oldState = entry.getValue();
 
-                if (location == null || oldState == null) {
-                    continue;
-                }
+                if (location == null || oldState == null) continue;
 
                 Block currentBlock = location.getBlock();
                 Material currentMaterial = currentBlock.getType();
 
                 if (currentMaterial != oldState.getType() && currentMaterial != Material.AIR) {
                     try {
-                        ItemStack refundItem = new ItemStack(currentMaterial, 1);
-                        if (player.getInventory().firstEmpty() != -1) {
-                            player.getInventory().addItem(refundItem);
+                        boolean isNear = location.getWorld().equals(playerLoc.getWorld()) &&
+                                location.distanceSquared(playerLoc) <= MAX_DISTANCE_SQUARED;
+
+                        if (isNear) {
+                            // Yakınsa doğrudan envantere ekleg
+                            HashMap<Integer, ItemStack> leftOver = player.getInventory().addItem(new ItemStack(currentMaterial, 1));
+
+                            if (!leftOver.isEmpty()) {
+                                player.getWorld().dropItem(playerLoc, leftOver.get(0));
+                            }
                         } else {
-                            player.getWorld().dropItem(player.getLocation(), refundItem);
+                            // Uzaktaysa envantere koymadan o bölgeye düşür.
+                            dropBuffer.merge(currentMaterial, 1, Integer::sum);
+                            lastDropLocation = location;
                         }
+
                         refundedItems++;
-                    } catch (Exception ignored) {
-                    }
+                    } catch (Exception ignored) { }
                 }
 
                 try {
                     oldState.update(true, false);
                     blocksRestored++;
-                } catch (Exception e) {
-                    System.err.println("Failed to restore block at " + location + ": " + e.getMessage());
-                }
+                } catch (Exception ignored) { }
 
                 blocksToRestore++;
 
-            } catch (Exception e) {
-                System.err.println("Error processing undo entry: " + e.getMessage());
+            } catch (Exception ignored) { }
+        }
+
+        flushDropBuffer();
+    }
+
+    /**
+     * Tampon bellekte biriken eşyaları 64'lük paketler halinde düşürür.
+     * Bu sayede 1000 entity yerine 16 entity oluşur ve TPS korunur.
+     */
+    private void flushDropBuffer() {
+        if (dropBuffer.isEmpty() || lastDropLocation == null) return;
+
+        for (Map.Entry<Material, Integer> entry : dropBuffer.entrySet()) {
+            Material material = entry.getKey();
+            int amount = entry.getValue();
+
+            while (amount > 0) {
+                int stackSize = Math.min(amount, 64);
+                ItemStack stack = new ItemStack(material, stackSize);
+
+                lastDropLocation.getWorld().dropItem(lastDropLocation, stack);
+
+                amount -= stackSize;
             }
         }
+
+        dropBuffer.clear();
     }
 
     private void finishTask() {
         isRunning = false;
+
+        flushDropBuffer();
 
         try {
             if (player.isOnline()) {
@@ -107,6 +145,7 @@ public class UndoTask extends BukkitRunnable {
     @Override
     public synchronized void cancel() throws IllegalStateException {
         isRunning = false;
+        flushDropBuffer();
         super.cancel();
     }
 }
