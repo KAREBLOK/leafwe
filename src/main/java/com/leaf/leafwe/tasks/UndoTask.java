@@ -66,15 +66,16 @@ public class UndoTask extends BukkitRunnable {
                         boolean isNear = location.getWorld().equals(playerLoc.getWorld()) &&
                                 location.distanceSquared(playerLoc) <= MAX_DISTANCE_SQUARED;
 
+                        // Artık oyuncular eşyaları eklenti aracılığıyla çok uzaklara taşıyamıyor. Shulkerların amacı korunmuş oluyor.
                         if (isNear) {
-                            // Yakınsa doğrudan envantere ekleg
+                            // Yakınsa doğrudan envantere ekleme
                             HashMap<Integer, ItemStack> leftOver = player.getInventory().addItem(new ItemStack(currentMaterial, 1));
 
                             if (!leftOver.isEmpty()) {
                                 player.getWorld().dropItem(playerLoc, leftOver.get(0));
                             }
                         } else {
-                            // Uzaktaysa envantere koymadan o bölgeye düşür.
+                            // Uzaktaysa envantere koymadan o bölgeye düşürme
                             dropBuffer.merge(currentMaterial, 1, Integer::sum);
                             lastDropLocation = location;
                         }
