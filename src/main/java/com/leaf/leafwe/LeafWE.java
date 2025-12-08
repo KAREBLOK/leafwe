@@ -61,7 +61,7 @@ public final class LeafWE extends JavaPlugin {
 
         } catch (Exception e) {
             getLogger().severe("Failed to enable " + (versionManager != null ? versionManager.getFullInfo() : "LeafWE") + ": " + e.getMessage());
-            e.printStackTrace();
+            getLogger().severe(e.getMessage());
             getServer().getPluginManager().disablePlugin(this);
         }
     }
@@ -105,17 +105,17 @@ public final class LeafWE extends JavaPlugin {
                 registry.register(DatabaseManager.class, databaseManager);
 
                 databaseManager.initialize().thenCompose(success -> {
-                    if (success) {
+                    if (Boolean.TRUE.equals(success)) {
                         getLogger().info("✅ Database initialized successfully");
                         databaseEnabled = true;
 
                         return initializeMigrationSystem(databaseManager);
                     } else {
                         getLogger().severe("❌ Failed to initialize database! Some features will be disabled.");
-                        return CompletableFuture.completedFuture(false);
+                        return CompletableFuture.completedFuture(Boolean.FALSE);
                     }
                 }).thenCompose(migrationSuccess -> {
-                    if (migrationSuccess && databaseEnabled) {
+                    if (Boolean.TRUE.equals(migrationSuccess) && databaseEnabled) {
                         AsyncDatabaseManager asyncDbManager = new AsyncDatabaseManager(this, databaseManager);
                         registry.register(AsyncDatabaseManager.class, asyncDbManager);
 
@@ -123,20 +123,20 @@ public final class LeafWE extends JavaPlugin {
                         registry.register(DailyLimitManager.class, dailyLimitManager);
 
                         getLogger().info("✅ Database system fully initialized");
-                        return CompletableFuture.completedFuture(true);
+                        return CompletableFuture.completedFuture(Boolean.TRUE);
                     } else {
                         getLogger().warning("⚠️ Database system partially initialized");
-                        return CompletableFuture.completedFuture(false);
+                        return CompletableFuture.completedFuture(Boolean.FALSE);
                     }
                 }).exceptionally(throwable -> {
                     getLogger().severe("❌ Database system initialization error: " + throwable.getMessage());
-                    throwable.printStackTrace();
-                    return false;
+                    getLogger().severe(throwable.getMessage());
+                    return Boolean.FALSE;
                 });
 
             } catch (Exception e) {
                 getLogger().severe("❌ Error setting up database system: " + e.getMessage());
-                e.printStackTrace();
+                getLogger().severe(e.getMessage());
             }
         });
     }
@@ -147,7 +147,7 @@ public final class LeafWE extends JavaPlugin {
             registry.register(MigrationManager.class, migrationManager);
 
             return migrationManager.initialize().thenCompose(success -> {
-                if (success) {
+                if (Boolean.TRUE.equals(success)) {
                     getLogger().info("✅ Migration system initialized");
 
                     if (getConfig().getBoolean("database.auto-migrate", true)) {
@@ -155,26 +155,26 @@ public final class LeafWE extends JavaPlugin {
                         return migrationManager.migrate().thenApply(result -> {
                             if (result.success) {
                                 getLogger().info("✅ Migrations completed successfully");
-                                return true;
+                                return Boolean.TRUE;
                             } else {
                                 getLogger().warning("⚠️ Some migrations failed - check logs");
-                                return false;
+                                return Boolean.FALSE;
                             }
                         });
                     } else {
                         getLogger().info("Auto-migration disabled");
-                        return CompletableFuture.completedFuture(true);
+                        return CompletableFuture.completedFuture(Boolean.TRUE);
                     }
                 } else {
                     getLogger().severe("❌ Failed to initialize migration system");
-                    return CompletableFuture.completedFuture(false);
+                    return CompletableFuture.completedFuture(Boolean.FALSE);
                 }
             });
 
         } catch (Exception e) {
             getLogger().severe("❌ Error initializing migration system: " + e.getMessage());
-            e.printStackTrace();
-            return CompletableFuture.completedFuture(false);
+            getLogger().severe(e.getMessage());
+            return CompletableFuture.completedFuture(Boolean.FALSE);
         }
     }
 
@@ -213,11 +213,13 @@ public final class LeafWE extends JavaPlugin {
                             ManagerRegistry.gui()
                     ), this);
 
+            getServer().getPluginManager().registerEvents(new com.leaf.leafwe.listeners.WorldListener(), this);
+
             getLogger().info("✅ Event listeners registered successfully");
 
         } catch (Exception e) {
             getLogger().severe("❌ Failed to register listeners: " + e.getMessage());
-            e.printStackTrace();
+            getLogger().severe(e.getMessage());
         }
     }
 
@@ -275,7 +277,7 @@ public final class LeafWE extends JavaPlugin {
             double memoryPercent = (double) usedMemory / maxMemory * 100;
 
             if (memoryPercent > 80) {
-                getLogger().warning("⚠️ High memory usage detected: " + String.format("%.1f%%", memoryPercent));
+                getLogger().warning("⚠️ High memory usage detected: " + Math.round(memoryPercent) + "%");
             }
 
         } catch (Exception e) {
@@ -288,50 +290,53 @@ public final class LeafWE extends JavaPlugin {
         try {
             getLogger().info("Shutting down LeafWE...");
 
-            TaskManager taskManager = ManagerRegistry.task();
-            if (taskManager != null) {
-                taskManager.cancelAllTasks();
-                getLogger().info("✅ All tasks cancelled");
+            if (registry != null) {
+                TaskManager taskManager = registry.get(TaskManager.class);
+                if (taskManager != null) {
+                    taskManager.cancelAllTasks();
+                    getLogger().info("✅ All tasks cancelled");
+                }
+
+                SelectionVisualizer selectionVisualizer = registry.get(SelectionVisualizer.class);
+                if (selectionVisualizer != null) {
+                    selectionVisualizer.shutdown();
+                    getLogger().info("✅ Selection visualizer stopped");
+                }
+
+                BlockstateManager blockstateManager = registry.get(BlockstateManager.class);
+                if (blockstateManager != null) {
+                    blockstateManager.cleanupAll();
+                    getLogger().info("✅ Blockstate manager cleaned up");
+                }
+
+                AsyncDatabaseManager asyncDbManager = registry.get(AsyncDatabaseManager.class);
+                if (asyncDbManager != null) {
+                    asyncDbManager.shutdown().join();
+                    getLogger().info("✅ Async database manager shutdown");
+                }
+
+                DailyLimitManager dailyLimitManager = registry.get(DailyLimitManager.class);
+                if (dailyLimitManager != null) {
+                    dailyLimitManager.shutdown();
+                    getLogger().info("✅ Daily limit manager shutdown");
+                }
+
+                DatabaseManager databaseManager = registry.get(DatabaseManager.class);
+                if (databaseManager != null) {
+                    databaseManager.shutdown().join();
+                    getLogger().info("✅ Database shutdown");
+                }
+
+                registry.shutdown();
             }
 
-            SelectionVisualizer selectionVisualizer = ManagerRegistry.visualizer();
-            if (selectionVisualizer != null) {
-                selectionVisualizer.shutdown();
-                getLogger().info("✅ Selection visualizer stopped");
-            }
-
-            BlockstateManager blockstateManager = ManagerRegistry.blockstate();
-            if (blockstateManager != null) {
-                blockstateManager.cleanupAll();
-                getLogger().info("✅ Blockstate manager cleaned up");
-            }
-
-            AsyncDatabaseManager asyncDbManager = ManagerRegistry.asyncDatabase();
-            if (asyncDbManager != null) {
-                asyncDbManager.shutdown().join();
-                getLogger().info("✅ Async database manager shutdown");
-            }
-
-            DailyLimitManager dailyLimitManager = ManagerRegistry.dailyLimit();
-            if (dailyLimitManager != null) {
-                dailyLimitManager.shutdown();
-                getLogger().info("✅ Daily limit manager shutdown");
-            }
-
-            DatabaseManager databaseManager = ManagerRegistry.database();
-            if (databaseManager != null) {
-                databaseManager.shutdown().join();
-                getLogger().info("✅ Database shutdown");
-            }
-
-            registry.shutdown();
             ManagerRegistry.reset();
 
             getLogger().info(versionManager != null ? versionManager.getDisableMessage() : "LeafWE disabled successfully.");
 
         } catch (Exception e) {
             getLogger().severe("❌ Error during plugin disable: " + e.getMessage());
-            e.printStackTrace();
+            getLogger().severe(e.getMessage());
         }
     }
 

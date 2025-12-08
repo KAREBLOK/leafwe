@@ -1,32 +1,34 @@
 package com.leaf.leafwe.tasks;
 
-import com.leaf.leafwe.gui.*;
-
-import com.leaf.leafwe.managers.*;
-
-import com.leaf.leafwe.LeafWE;
-
+import com.leaf.leafwe.managers.ConfigManager;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.data.BlockData;
+import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class UndoTask extends BukkitRunnable {
 
     private final Player player;
-    private final List<Map.Entry<Location, BlockData>> changes;
+    private final List<Map.Entry<Location, BlockState>> changes;
     private final ConfigManager configManager;
     private int refundedItems = 0;
     private int blocksRestored = 0;
     private boolean isRunning = true;
 
-    public UndoTask(Player player, Map<Location, BlockData> changeMap, ConfigManager configManager) {
+    private final Map<Material, Integer> dropBuffer = new HashMap<>();
+    private Location lastDropLocation = null;
+
+    private static final double MAX_DISTANCE_SQUARED = 50 * 50;
+
+    public UndoTask(Player player, Map<Location, BlockState> changeMap, ConfigManager configManager) {
         this.player = player;
         this.changes = new ArrayList<>(changeMap.entrySet());
         this.configManager = configManager;
@@ -46,55 +48,83 @@ public class UndoTask extends BukkitRunnable {
 
         int blocksToRestore = 0;
         int maxBlocksPerTick = 2000;
+        Location playerLoc = player.getLocation();
 
         while (blocksToRestore < maxBlocksPerTick && !changes.isEmpty()) {
             try {
-                Map.Entry<Location, BlockData> entry = changes.remove(0);
+                Map.Entry<Location, BlockState> entry = changes.remove(0);
                 Location location = entry.getKey();
-                BlockData oldBlockData = entry.getValue();
+                BlockState oldState = entry.getValue();
 
-                if (location == null || oldBlockData == null) {
-                    continue;
-                }
+                if (location == null || oldState == null) continue;
 
                 Block currentBlock = location.getBlock();
-                if (currentBlock == null) {
-                    continue;
-                }
+                Material currentMaterial = currentBlock.getType();
 
-                Material newMaterial = currentBlock.getType();
-
-                if (newMaterial != oldBlockData.getMaterial() && newMaterial != Material.AIR) {
+                if (currentMaterial != oldState.getType() && currentMaterial != Material.AIR) {
                     try {
-                        ItemStack refundItem = new ItemStack(newMaterial, 1);
+                        boolean isNear = location.getWorld().equals(playerLoc.getWorld()) &&
+                                location.distanceSquared(playerLoc) <= MAX_DISTANCE_SQUARED;
 
-                        if (player.getInventory().firstEmpty() != -1) {
-                            player.getInventory().addItem(refundItem);
+                        // Artık oyuncular eşyaları eklenti aracılığıyla çok uzaklara taşıyamıyor. Shulkerların amacı korunmuş oluyor.
+                        if (isNear) {
+                            // Yakınsa doğrudan envantere ekleme
+                            HashMap<Integer, ItemStack> leftOver = player.getInventory().addItem(new ItemStack(currentMaterial, 1));
+
+                            if (!leftOver.isEmpty()) {
+                                player.getWorld().dropItem(playerLoc, leftOver.get(0));
+                            }
                         } else {
-                            player.getWorld().dropItem(player.getLocation(), refundItem);
+                            // Uzaktaysa envantere koymadan o bölgeye düşürme
+                            dropBuffer.merge(currentMaterial, 1, Integer::sum);
+                            lastDropLocation = location;
                         }
+
                         refundedItems++;
-                    } catch (Exception e) {
-                    }
+                    } catch (Exception ignored) { }
                 }
 
                 try {
-                    currentBlock.setBlockData(oldBlockData, false);
+                    oldState.update(true, false);
                     blocksRestored++;
-                } catch (Exception e) {
-                    System.err.println("Failed to restore block at " + location + ": " + e.getMessage());
-                }
+                } catch (Exception ignored) { }
 
                 blocksToRestore++;
 
-            } catch (Exception e) {
-                System.err.println("Error processing undo entry: " + e.getMessage());
+            } catch (Exception ignored) { }
+        }
+
+        flushDropBuffer();
+    }
+
+    /**
+     * Tampon bellekte biriken eşyaları 64'lük paketler halinde düşürür.
+     * Bu sayede 1000 entity yerine 16 entity oluşur ve TPS korunur.
+     */
+    private void flushDropBuffer() {
+        if (dropBuffer.isEmpty() || lastDropLocation == null) return;
+
+        for (Map.Entry<Material, Integer> entry : dropBuffer.entrySet()) {
+            Material material = entry.getKey();
+            int amount = entry.getValue();
+
+            while (amount > 0) {
+                int stackSize = Math.min(amount, 64);
+                ItemStack stack = new ItemStack(material, stackSize);
+
+                lastDropLocation.getWorld().dropItem(lastDropLocation, stack);
+
+                amount -= stackSize;
             }
         }
+
+        dropBuffer.clear();
     }
 
     private void finishTask() {
         isRunning = false;
+
+        flushDropBuffer();
 
         try {
             if (player.isOnline()) {
@@ -107,7 +137,7 @@ public class UndoTask extends BukkitRunnable {
                             .replaceText(config -> config.matchLiteral("%blocks%").replacement(String.valueOf(blocksRestored))));
                 }
             }
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
 
         this.cancel();
@@ -116,6 +146,7 @@ public class UndoTask extends BukkitRunnable {
     @Override
     public synchronized void cancel() throws IllegalStateException {
         isRunning = false;
+        flushDropBuffer();
         super.cancel();
     }
 }

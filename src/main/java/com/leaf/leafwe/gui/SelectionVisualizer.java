@@ -1,15 +1,16 @@
 package com.leaf.leafwe.gui;
 
-import com.leaf.leafwe.managers.*;
-
 import com.leaf.leafwe.LeafWE;
-
+import com.leaf.leafwe.managers.ConfigManager;
+import com.leaf.leafwe.managers.SelectionManager;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,8 +35,9 @@ public class SelectionVisualizer {
         if (!configManager.isVisualizerEnabled() || player == null || isShuttingDown) return;
 
         stop(player);
-
         updateLastActivity(player);
+
+        final UUID playerUUID = player.getUniqueId();
 
         try {
             BukkitTask task = new BukkitRunnable() {
@@ -43,46 +45,53 @@ public class SelectionVisualizer {
 
                 @Override
                 public void run() {
-                    if (isShuttingDown || !player.isOnline()) {
+                    if (isShuttingDown) {
                         this.cancel();
-                        activeTasks.remove(player.getUniqueId());
-                        lastActivity.remove(player.getUniqueId());
+                        return;
+                    }
+
+                    Player currentPlayer = Bukkit.getPlayer(playerUUID);
+
+                    if (currentPlayer == null || !currentPlayer.isOnline()) {
+                        this.cancel();
+                        activeTasks.remove(playerUUID);
+                        lastActivity.remove(playerUUID);
                         return;
                     }
 
                     if (tickCount % ACTIVITY_CHECK_INTERVAL == 0) {
-                        if (isTimedOut(player)) {
-                            player.sendActionBar(plugin.getConfigManager().getMessage("selection-visualizer-timeout"));
+                        if (isTimedOut(playerUUID)) {
+                            currentPlayer.sendActionBar(configManager.getMessage("selection-visualizer-timeout"));
                             this.cancel();
-                            activeTasks.remove(player.getUniqueId());
-                            lastActivity.remove(player.getUniqueId());
+                            activeTasks.remove(playerUUID);
+                            lastActivity.remove(playerUUID);
                             return;
                         }
                     }
 
-                    Location pos1 = selectionManager.getPosition1(player);
-                    Location pos2 = selectionManager.getPosition2(player);
+                    Location pos1 = selectionManager.getPosition1(currentPlayer);
+                    Location pos2 = selectionManager.getPosition2(currentPlayer);
 
                     if (pos1 == null || pos2 == null) {
                         this.cancel();
-                        activeTasks.remove(player.getUniqueId());
-                        lastActivity.remove(player.getUniqueId());
+                        activeTasks.remove(playerUUID);
+                        lastActivity.remove(playerUUID);
                         return;
                     }
 
                     if (!pos1.getWorld().equals(pos2.getWorld())) {
                         this.cancel();
-                        activeTasks.remove(player.getUniqueId());
-                        lastActivity.remove(player.getUniqueId());
+                        activeTasks.remove(playerUUID);
+                        lastActivity.remove(playerUUID);
                         return;
                     }
 
-                    drawBox(pos1, pos2, Color.AQUA, player);
+                    drawBox(pos1, pos2, Color.AQUA, currentPlayer);
                     tickCount++;
                 }
             }.runTaskTimerAsynchronously(plugin, 0L, 20L);
 
-            activeTasks.put(player.getUniqueId(), task);
+            activeTasks.put(playerUUID, task);
         } catch (Exception e) {
             plugin.getLogger().warning("Error starting selection visualizer for " + player.getName() + ": " + e.getMessage());
         }
@@ -97,6 +106,8 @@ public class SelectionVisualizer {
         Location pos2 = selectionManager.getPosition2(player);
         if (pos1 == null || pos2 == null || !pos1.getWorld().equals(pos2.getWorld())) return;
 
+        final UUID playerUUID = player.getUniqueId();
+
         try {
             if (configManager.isSuccessEffectEnabled() && player.isOnline()) {
                 player.playSound(player.getLocation(), configManager.getSuccessSound(), 1.0f, 1.2f);
@@ -107,13 +118,19 @@ public class SelectionVisualizer {
 
                 @Override
                 public void run() {
-                    if (duration <= 0 || !player.isOnline() || isShuttingDown) {
+                    if (isShuttingDown || duration <= 0) {
+                        this.cancel();
+                        return;
+                    }
+
+                    Player currentPlayer = Bukkit.getPlayer(playerUUID);
+                    if (currentPlayer == null || !currentPlayer.isOnline()) {
                         this.cancel();
                         return;
                     }
 
                     try {
-                        drawBox(pos1, pos2, Color.LIME, player);
+                        drawBox(pos1, pos2, Color.LIME, currentPlayer);
                     } catch (Exception e) {
                         this.cancel();
                     }
@@ -128,16 +145,17 @@ public class SelectionVisualizer {
 
     public void stop(Player player) {
         if (player == null) return;
+        UUID uuid = player.getUniqueId();
 
-        BukkitTask task = activeTasks.remove(player.getUniqueId());
+        BukkitTask task = activeTasks.remove(uuid);
         if (task != null && !task.isCancelled()) {
             try {
                 task.cancel();
-            } catch (IllegalStateException e) {
+            } catch (IllegalStateException ignored) {
             }
         }
 
-        lastActivity.remove(player.getUniqueId());
+        lastActivity.remove(uuid);
     }
 
     public void shutdown() {
@@ -147,7 +165,7 @@ public class SelectionVisualizer {
             if (task != null && !task.isCancelled()) {
                 try {
                     task.cancel();
-                } catch (IllegalStateException e) {
+                } catch (IllegalStateException ignored) {
                 }
             }
         }
@@ -161,10 +179,8 @@ public class SelectionVisualizer {
         }
     }
 
-    private boolean isTimedOut(Player player) {
-        if (player == null) return true;
-
-        Long lastTime = lastActivity.get(player.getUniqueId());
+    private boolean isTimedOut(UUID playerUUID) {
+        Long lastTime = lastActivity.get(playerUUID);
         if (lastTime == null) return true;
 
         long timeoutMillis = getTimeoutSeconds() * 1000;
@@ -184,7 +200,9 @@ public class SelectionVisualizer {
     }
 
     private void drawBox(Location corner1, Location corner2, Color color, Player player) {
-        if (corner1 == null || corner2 == null || !corner1.getWorld().equals(corner2.getWorld())) return;
+        if (corner1 == null || corner2 == null || player == null) return;
+
+        if (!player.getWorld().getUID().equals(corner1.getWorld().getUID())) return;
 
         try {
             Particle.DustOptions dustOptions = new Particle.DustOptions(color, 1.0F);
@@ -218,9 +236,7 @@ public class SelectionVisualizer {
                 spawnParticleForPlayer(new Location(corner1.getWorld(), minX, maxY, z), dustOptions, player);
                 spawnParticleForPlayer(new Location(corner1.getWorld(), maxX, maxY, z), dustOptions, player);
             }
-        } catch (Exception e) {
-            plugin.getLogger().warning("Error drawing selection box: " + e.getMessage());
-        }
+        } catch (Exception ignored) { }
     }
 
     private double calculateStep(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
@@ -236,11 +252,12 @@ public class SelectionVisualizer {
     }
 
     private void spawnParticleForPlayer(Location location, Particle.DustOptions options, Player player) {
-        if (location == null || location.getWorld() == null || !player.isOnline()) return;
+        if (location == null || player == null) return;
 
         try {
-            player.spawnParticle(Particle.REDSTONE, location, 1, options);
-        } catch (Exception e) {
-        }
+            if (player.isOnline()) {
+                player.spawnParticle(Particle.REDSTONE, location, 1, options);
+            }
+        } catch (Exception ignored) { }
     }
 }

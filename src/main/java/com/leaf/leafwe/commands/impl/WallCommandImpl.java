@@ -3,15 +3,12 @@ package com.leaf.leafwe.commands.impl;
 import com.leaf.leafwe.LeafWE;
 import com.leaf.leafwe.commands.BaseCommand;
 import com.leaf.leafwe.managers.*;
-import com.leaf.leafwe.gui.GuiManager;
-import com.leaf.leafwe.gui.SelectionVisualizer;
 import com.leaf.leafwe.tasks.BlockPlacerTask;
 import com.leaf.leafwe.registry.ManagerRegistry;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.data.BlockData;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -100,7 +97,7 @@ public class WallCommandImpl extends BaseCommand {
         }
 
         List<Location> locationsToFill = new ArrayList<>();
-        Map<Location, BlockData> undoData = new HashMap<>();
+        Map<Location, org.bukkit.block.BlockState> undoData = new HashMap<>();
 
         try {
             World world = pos1.getWorld();
@@ -117,7 +114,7 @@ public class WallCommandImpl extends BaseCommand {
                         if (x == minX || x == maxX || z == minZ || z == maxZ) {
                             Location loc = new Location(world, x, y, z);
                             locationsToFill.add(loc);
-                            undoData.put(loc, loc.getBlock().getBlockData());
+                            undoData.put(loc, loc.getBlock().getState());
                         }
                     }
                 }
@@ -172,7 +169,8 @@ public class WallCommandImpl extends BaseCommand {
                 BlockPlacerTask task = new BlockPlacerTask(
                         plugin, player, locationsToFill, finalBlockType,
                         ManagerRegistry.config(), ManagerRegistry.visualizer(),
-                        ManagerRegistry.task(), ManagerRegistry.blockstate()
+                        ManagerRegistry.task(), ManagerRegistry.blockstate(),
+                        ManagerRegistry.protection()
                 );
                 task.runTaskTimer(plugin, 2L, ManagerRegistry.config().getSpeed());
                 ManagerRegistry.task().startTask(player, task);
@@ -220,7 +218,7 @@ public class WallCommandImpl extends BaseCommand {
                 new Location(world, maxX, maxY, maxZ),
                 new Location(world, minX, maxY, minZ),
                 new Location(world, maxX, minY, maxZ),
-                new Location(world, (minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2)
+                new Location(world, (double) (minX + maxX) / 2, (double) (minY + maxY) / 2, (double) (minZ + maxZ) / 2)
         };
 
         for (Location checkPoint : checkPoints) {
