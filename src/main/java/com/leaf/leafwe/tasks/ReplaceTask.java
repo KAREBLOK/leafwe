@@ -2,6 +2,7 @@ package com.leaf.leafwe.tasks;
 
 import com.leaf.leafwe.gui.SelectionVisualizer;
 import com.leaf.leafwe.managers.*;
+import com.leaf.leafwe.registry.ManagerRegistry;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -36,6 +37,7 @@ public class ReplaceTask extends BukkitRunnable {
     private ArmorStand worker = null;
     private boolean isRunning = true;
     private boolean isCompleted = false;
+    private boolean limitsRecorded = false;
 
     public ReplaceTask(Player player, List<Location> locationsToChange, Material toMaterial,
                        ConfigManager configManager, SelectionVisualizer visualizer,
@@ -138,6 +140,14 @@ public class ReplaceTask extends BukkitRunnable {
         taskManager.finishTask(player);
         selectionVisualizer.playSuccessEffect(player);
 
+        if (!limitsRecorded && blocksReplaced > 0) {
+            DailyLimitManager dailyLimitManager = ManagerRegistry.dailyLimit();
+            if (dailyLimitManager != null) {
+                dailyLimitManager.recordUsage(player, blocksReplaced);
+                limitsRecorded = true;
+            }
+        }
+
         if (!locationsToChange.isEmpty()) {
             player.sendMessage(configManager.getMessage("inventory-ran-out")
                     .replaceText(config -> config.matchLiteral("%block%").replacement(toMaterial.name())));
@@ -152,7 +162,9 @@ public class ReplaceTask extends BukkitRunnable {
             ProgressBarManager.showCompletion(player, blocksReplaced, completionText);
 
             if (blocksSkipped > 0) {
-                player.sendMessage("§e" + blocksSkipped + " blok korumalı alanda olduğu için değiştirilemedi.");
+                final int skipped = blocksSkipped;
+                player.sendMessage(configManager.getMessage("blocks-skipped-protected")
+                        .replaceText(config -> config.matchLiteral("%count%").replacement(String.valueOf(skipped))));
             }
         }
 

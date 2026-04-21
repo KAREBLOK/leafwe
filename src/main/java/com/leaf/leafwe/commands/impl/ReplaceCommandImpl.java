@@ -114,6 +114,11 @@ public class ReplaceCommandImpl extends BaseCommand {
             return true;
         }
 
+        if (fromBlock == toBlock) {
+            player.sendMessage(ManagerRegistry.config().getMessage("replace-same-block"));
+            return true;
+        }
+
         if (!player.getInventory().contains(toBlock)) {
             player.sendMessage(ManagerRegistry.config().getMessage("inventory-empty")
                     .replaceText(config -> config.matchLiteral("%block%").replacement(toBlock.name())));

@@ -77,7 +77,7 @@ public class UndoManager {
         }
 
         if (worldMissing) {
-            player.sendMessage("§cBazı bloklar geri alınamadı çünkü dünya artık yüklü değil.");
+            player.sendMessage(configManager.getMessage("undo-world-missing"));
         }
 
         if (taskData.isEmpty()) {

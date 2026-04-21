@@ -159,7 +159,9 @@ public class BlockPlacerTask extends BukkitRunnable {
             ProgressBarManager.showCompletion(player, blocksPlaced, completionText);
 
             if (blocksSkipped > 0) {
-                player.sendMessage("§e" + blocksSkipped + " blok korumalı alanda olduğu için yerleştirilemedi.");
+                final int skipped = blocksSkipped;
+                player.sendMessage(configManager.getMessage("blocks-skipped-protected")
+                        .replaceText(config -> config.matchLiteral("%count%").replacement(String.valueOf(skipped))));
             }
         }
 

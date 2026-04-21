@@ -198,33 +198,32 @@ public class DailyLimitManager {
         batchUpdateTask.runTaskTimerAsynchronously(plugin, 600L, 600L);
     }
 
-    private void processPendingUpdates() {
-        if (pendingUpdates.isEmpty()) return;
+    private CompletableFuture<Void> processPendingUpdates() {
+        if (pendingUpdates.isEmpty()) return CompletableFuture.completedFuture(null);
 
         var updates = new ConcurrentHashMap<>(pendingUpdates);
         pendingUpdates.clear();
 
-        CompletableFuture.runAsync(() -> {
-            for (var entry : updates.entrySet()) {
-                UUID playerId = entry.getKey();
-                PendingUpdate update = entry.getValue();
+        CompletableFuture<?>[] futures = updates.entrySet().stream().map(entry -> {
+            UUID playerId = entry.getKey();
+            PendingUpdate update = entry.getValue();
 
-                databaseManager.getDailyUsage(playerId, update.date)
-                        .thenCompose(currentData -> {
-                            int newBlocksUsed = currentData.blocksUsed + update.blockCount;
-                            int newOperationsUsed = currentData.operationsUsed + update.operationCount;
+            return databaseManager.getDailyUsage(playerId, update.date)
+                    .thenCompose(currentData -> {
+                        int newBlocksUsed = currentData.blocksUsed + update.blockCount;
+                        int newOperationsUsed = currentData.operationsUsed + update.operationCount;
 
-                            return databaseManager.updateDailyUsage(playerId, update.date,
-                                    newBlocksUsed, newOperationsUsed, update.playerGroup);
-                        })
-                        .exceptionally(throwable -> {
-                            plugin.getLogger().warning("Error updating daily usage for " + playerId + ": " + throwable.getMessage());
-                            return false;
-                        });
-            }
-        });
+                        return databaseManager.updateDailyUsage(playerId, update.date,
+                                newBlocksUsed, newOperationsUsed, update.playerGroup);
+                    })
+                    .exceptionally(throwable -> {
+                        plugin.getLogger().warning("Error updating daily usage for " + playerId + ": " + throwable.getMessage());
+                        return false;
+                    });
+        }).toArray(CompletableFuture[]::new);
 
         plugin.getLogger().fine("Processed " + updates.size() + " pending daily limit updates");
+        return CompletableFuture.allOf(futures);
     }
 
     private void startCleanupTask() {
@@ -288,14 +287,14 @@ public class DailyLimitManager {
 
         if (!pendingUpdates.isEmpty()) {
             plugin.getLogger().info("Processing remaining " + pendingUpdates.size() + " daily limit updates...");
-            processPendingUpdates();
+            try {
+                processPendingUpdates().get(10, java.util.concurrent.TimeUnit.SECONDS);
+                plugin.getLogger().info("Remaining daily limit updates flushed");
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to flush pending daily limit updates within timeout: " + e.getMessage());
+            }
         }
-
-        if (databaseManager != null) {
-            databaseManager.shutdown().thenRun(() -> {
-                plugin.getLogger().info("Daily limit database shutdown completed");
-            });
-        }
+        // DB shutdown'ı burada yapmıyoruz; LeafWE.onDisable() kendisi databaseManager.shutdown().join() çağırıyor.
     }
 
     private String getPlayerGroup(Player player) {

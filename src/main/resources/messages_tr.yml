@@ -22,8 +22,8 @@ messages:
   # Seçim & Pipet Mesajları
   select-pos1: '&cÖnce 1. pozisyonu seçmelisiniz! (Yapı çubuğu ile sol tık)'
   select-pos2: '&c1. pozisyon ayarlandı. Şimdi 2. pozisyonu seçin! (Yapı çubuğu ile sağ tık)'
-  pos1-set: '&a1. pozisyon ayarlandı!'
-  pos2-set: '&a2. pozisyon ayarlandı!'
+  pos1-set: '&a1. pozisyon ayarlandı! &7(%x%, %y%, %z%)'
+  pos2-set: '&a2. pozisyon ayarlandı! &7(%x%, %y%, %z%)'
   blockstate-copied: '&aBlok durumu kopyalandı: &e%block%'
   blockstate-cleared: '&7Kopyalanan blok durumu temizlendi.'
 
@@ -31,6 +31,9 @@ messages:
   invalid-block: '&cGeçersiz blok adı: %block%'
   blacklisted-block: '&cBu bloğu yerleştiremezsiniz! (Güvenlik nedeniyle engellendi)'
   inventory-empty: '&cEnvanterinizde hiç ''%block%'' bloğu yok!'
+  replace-same-block: '&cDeğiştirilecek ve yerine konulacak blok aynı olamaz!'
+  undo-world-missing: '&cBazı bloklar geri alınamadı çünkü dünya artık yüklü değil.'
+  blocks-skipped-protected: '&e%count% blok korumalı alanda olduğu için işleme alınamadı.'
 
   # İşlem Geri Bildirimleri
   process-starting: '&aBlok işlemi başlatılıyor...'

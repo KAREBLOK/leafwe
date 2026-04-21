@@ -45,9 +45,7 @@ permissions:
       leafwe.reload: true
       leafwe.bypass.limit: true
       leafwe.bypass.protection: true
-      leafwe.limits.others: true
-      leafwe.resetlimits: true
-      leafwe.givelimits: true
+      leafwe.admin: true
   leafwe.use:
     description: Use /set command
     default: true
@@ -74,4 +72,20 @@ permissions:
     default: op
   leafwe.bypass.protection:
     description: Bypass WorldGuard/SuperiorSkyblock protection
+    default: op
+  leafwe.admin:
+    description: Grants all admin-level LeafWE permissions
+    default: op
+    children:
+      leafwe.admin.status: true
+      leafwe.admin.migration: true
+      leafwe.admin.debug: true
+  leafwe.admin.status:
+    description: Use /lwe status
+    default: op
+  leafwe.admin.migration:
+    description: Use /lwe migration (database migration controls)
+    default: op
+  leafwe.admin.debug:
+    description: Use /lwe debug
     default: op

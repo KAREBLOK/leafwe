@@ -215,7 +215,11 @@ public class ManagerRegistry {
         }
 
         try {
-            return dbManager.testConnection().join();
+            // Main thread'in donmaması için 1 saniyelik hard timeout; aşılırsa false döner.
+            return dbManager.testConnection()
+                    .orTimeout(1, java.util.concurrent.TimeUnit.SECONDS)
+                    .exceptionally(e -> false)
+                    .join();
         } catch (Exception e) {
             return false;
         }

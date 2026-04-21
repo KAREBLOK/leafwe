@@ -31,6 +31,9 @@ messages:
   invalid-block: '&cInvalid block name: %block%'
   blacklisted-block: '&cYou cannot place this block! (Blocked for security reasons)'
   inventory-empty: '&cYou do not have any ''%block%'' in your inventory!'
+  replace-same-block: '&cSource and target blocks cannot be the same!'
+  undo-world-missing: '&cSome blocks could not be undone because the world is no longer loaded.'
+  blocks-skipped-protected: '&e%count% blocks were skipped because they are in a protected area.'
 
   # Operation Feedback
   process-starting: '&aBlock operation starting...'

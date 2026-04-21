@@ -6,7 +6,7 @@
 
   <groupId>com.leaf</groupId>
   <artifactId>leafwe</artifactId>
-  <version>5.1.2</version>
+  <version>5.1.3</version>
   <packaging>jar</packaging>
 
   <name>LeafWE</name>

@@ -89,7 +89,7 @@ public class SelectionVisualizer {
                     drawBox(pos1, pos2, Color.AQUA, currentPlayer);
                     tickCount++;
                 }
-            }.runTaskTimerAsynchronously(plugin, 0L, 20L);
+            }.runTaskTimer(plugin, 0L, 20L);
 
             activeTasks.put(playerUUID, task);
         } catch (Exception e) {
@@ -113,19 +113,21 @@ public class SelectionVisualizer {
                 player.playSound(player.getLocation(), configManager.getSuccessSound(), 1.0f, 1.2f);
             }
 
-            new BukkitRunnable() {
+            BukkitTask effectTask = new BukkitRunnable() {
                 private int duration = 40;
 
                 @Override
                 public void run() {
                     if (isShuttingDown || duration <= 0) {
                         this.cancel();
+                        activeTasks.remove(playerUUID);
                         return;
                     }
 
                     Player currentPlayer = Bukkit.getPlayer(playerUUID);
                     if (currentPlayer == null || !currentPlayer.isOnline()) {
                         this.cancel();
+                        activeTasks.remove(playerUUID);
                         return;
                     }
 
@@ -133,11 +135,14 @@ public class SelectionVisualizer {
                         drawBox(pos1, pos2, Color.LIME, currentPlayer);
                     } catch (Exception e) {
                         this.cancel();
+                        activeTasks.remove(playerUUID);
                     }
 
                     duration--;
                 }
-            }.runTaskTimerAsynchronously(plugin, 0L, 1L);
+            }.runTaskTimer(plugin, 0L, 1L);
+
+            activeTasks.put(playerUUID, effectTask);
         } catch (Exception e) {
             plugin.getLogger().warning("Error playing success effect for " + player.getName() + ": " + e.getMessage());
         }

@@ -2,10 +2,9 @@
 
 **LeafWE**, Minecraft sunucuları için geliştirilmiş, oyuncu dostu ve performans odaklı bir **hafifletilmiş WorldEdit alternatifidir**. Sunucu sahiplerinin oyuncularına güvenli bir şekilde yapı düzenleme yetkisi vermesini sağlar.
 
-![Version](https://img.shields.io/badge/version-5.1.2-blue) ![Java](https://img.shields.io/badge/Java-17%2B-orange) ![Author](https://img.shields.io/badge/author-BaranMRJ-red)
+![Version](https://img.shields.io/badge/version-5.1.3-blue) ![Java](https://img.shields.io/badge/Java-17%2B-orange) ![Author](https://img.shields.io/badge/author-BaranMRJ-red)
 
 ---
-dc
 ## 🌟 Özellikler
 
 *   **🚀 Hafif ve Hızlı:** Sunucunuzu yormadan büyük alanlarda işlem yapabilme.
